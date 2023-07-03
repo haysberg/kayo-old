@@ -14,6 +14,7 @@ bot = discord.Bot()
 subscribe = bot.create_group("subscribe", "Subscribing to leagues and teams")
 listOfTeams = dict()
 listOfLeagues = dict()
+listOfEvents = []
 
 # Logging
 logger = logging.getLogger('discord')
@@ -29,6 +30,15 @@ async def on_ready():
     for league in kayo_lib.fetch_leagues() :
         listOfLeagues[league["name"]] = league
     logging.info(f"Downloaded {len(listOfLeagues)} leagues.")
+
+    listOfEvents = kayo_lib.fetch_events(listOfLeagues)
+    logging.info(f"Downloaded {len(listOfEvents)} schedules.")
+
+    # print(listOfEvents)
+    # for schedule in listOfEvents :
+    #     for event in listOfEvents[schedule] :
+    #         for match in event["events"]["match"][t]
+
     logging.info(f"{bot.user} is online! 🚀")
 
 @bot.event
@@ -48,22 +58,18 @@ async def subscribe_league(
     if not ctx.author.guild_permissions.administrator :
         await ctx.respond(f'Sorry, only Administrators are allowed to run this command !')
     else :
-        db.alerts.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
-        await ctx.respond(f'League info : `{listOfLeagues[league]}` !')
+        db.alerts_leagues.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
+        await ctx.respond(f'League info : `{listOfLeagues[league]}` !') 
 
-
-# @bot.command(description="Subscribe the channel to a league.")
-# async def add(ctx, league: str):
-#     if league == None or league not in leagues:
-#         await ctx.respond(f"Please specify a league!")
-#         return
-#     item_1 = {
-#     "channelID" : str(ctx.channel.id),
-#     "leagueID" : leagues[league][0],
-#     "leagueName" : leagues[league][1],
-#     "leagueRegion" : leagues[league][2]
-#     }
-#     insert_into_db("alerts", item_1)
-#     await ctx.respond(f"Added !👍")
+@subscribe.command(name="all_leagues", description="Subscribe to league alerts")
+async def subscribe_all_leagues(
+    ctx: discord.ApplicationContext
+):
+    if not ctx.author.guild_permissions.administrator :
+        await ctx.respond(f'Sorry, only Administrators are allowed to run this command !')
+    else :
+        for league in listOfLeagues :
+            db.alerts_leagues.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
+        await ctx.respond(f'Subscribed to {len(listOfLeagues)} different leagues !') 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
