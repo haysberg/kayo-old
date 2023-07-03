@@ -4,10 +4,12 @@ import sys
 import discord
 import dotenv
 import kayo_lib
-import requests
+from pymongo import MongoClient
 
 # Initializing core objects
 dotenv.load_dotenv()
+db_client = MongoClient(os.getenv("MONGO_URI"))
+db = db_client["kayo-testing"]
 bot = discord.Bot()
 subscribe = bot.create_group("subscribe", "Subscribing to leagues and teams")
 listOfTeams = dict()
@@ -43,7 +45,11 @@ async def subscribe_league(
     ctx: discord.ApplicationContext,
     league: discord.Option(discord.SlashCommandOptionType.string, autocomplete=discord.utils.basic_autocomplete(listOfLeagues.keys()))
 ):
-    await ctx.respond(f'League info : `{listOfLeagues[league]}` !')
+    if not ctx.author.guild_permissions.administrator :
+        await ctx.respond(f'Sorry, only Administrators are allowed to run this command !')
+    else :
+        db.alerts.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
+        await ctx.respond(f'League info : `{listOfLeagues[league]}` !')
 
 
 # @bot.command(description="Subscribe the channel to a league.")

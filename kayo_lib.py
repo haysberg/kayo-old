@@ -3,11 +3,7 @@ import json
 from pymongo import MongoClient
 import os
 
-def get_league_names():
-    res = []
-    for i in listOfLeagues:
-        res.append(i[0])
-    return res
+
 
 def get_database():
    db = MongoClient(os.getenv("MONGO_URI"))
