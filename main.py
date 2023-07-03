@@ -4,6 +4,7 @@ import sys
 from pymongo import MongoClient
 import discord
 import dotenv
+import requests
 
 # Initializing core objects
 dotenv.load_dotenv()
@@ -18,6 +19,25 @@ def insert_into_db(user_id, item):
     dbname = get_database()
     collection_name = dbname[user_id]
     collection_name.insert_many([item])
+
+
+def fetch_leagues():
+    # The league endpoint
+    url = "https://esports-api.service.valorantesports.com/persisted/val/getLeagues?hl=fr-FR&sport=val"
+    payload = {"x-api-key": os.getenv("RIOT_API_KEY")}
+    response = requests.get(url, headers=payload)
+    return response.json()
+
+#return [id, name, region]
+def list_leagues():
+    leagues = fetch_leagues()
+    return_leagues = {}
+    for league in leagues["data"]["leagues"]:
+        return_leagues[league["name"]] = [league["id"], league["name"],league["region"]]
+    return return_leagues
+
+#all leagues
+leagues = list_leagues()
 
 # Logging
 logger = logging.getLogger('discord')
@@ -45,13 +65,18 @@ async def ping(ctx): # a slash command will be created with the name "ping"
     latency_ms = round(bot.latency * 1000)
     await ctx.respond(f"Pong! Latency is {latency_ms} ms")
 
-@bot.command(description="Subscribe the user to a league.")
-async def add(ctx):
+@bot.command(description="Subscribe the channel to a league.")
+async def add(ctx, league: str):
+    if league == None or league not in leagues:
+        await ctx.respond(f"Please specify a league!")
+        return
     item_1 = {
-    "league" : "trofor",
-    "match" : "2"
+    "channelID" : str(ctx.channel.id),
+    "leagueID" : leagues[league][0],
+    "leagueName" : leagues[league][1],
+    "leagueRegion" : leagues[league][2]
     }
-    insert_into_db(str(ctx.author.id), item_1)
-    await ctx.respond(f"Added!")
+    insert_into_db("alerts", item_1)
+    await ctx.respond(f"Added !👍")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
