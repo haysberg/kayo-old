@@ -1,4 +1,4 @@
-pymongo==4.3.3
+pymongo==4.4.0
 py-cord==2.4.1
 py-cord[speed]
 python-dotenv==1.0.0
