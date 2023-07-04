@@ -57,6 +57,24 @@ repos:
     hooks:
     -   id: codespell
         files: \.(py|sh|rst|yml|yaml)$
+
+-   repo: https://github.com/gitleaks/gitleaks
+    rev: v8.17.0
+    hooks:
+    -   id: gitleaks
+
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v3.10.0
+    hooks:
+    -   id: reorder-python-imports
+        args: [--py3-plus]
+
+-   repo: https://github.com/detailyang/pre-commit-shell.git
+    rev: 1.0.5
+    hooks:
+    -   id: shell-lint
+        types: ["shell"]
+
 ci:
     # Settings for the https://pre-commit.ci/ continuous integration service
     autofix_prs: false
