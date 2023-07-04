@@ -5,6 +5,7 @@ import os
 import discord
 
 
+
 def get_database():
    db = MongoClient(os.getenv("MONGO_URI"))
    return db['users']

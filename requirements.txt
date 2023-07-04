@@ -1,5 +1,14 @@
+# Connecting to remote services
 pymongo==4.4.0
 py-cord==2.4.1
 py-cord[speed]
+
+# Dotenv & API calls
 python-dotenv==1.0.0
 requests==2.31.0
+
+# Enforcing a healthy code
+pre-commit==3.3.3
+black==23.3.0
+flake8==6.0.0
+flake8-black
