@@ -1,9 +1,9 @@
-import requests
 import json
-from pymongo import MongoClient
 import os
-import discord
 
+import discord
+import requests
+from pymongo import MongoClient
 
 
 def get_database():
@@ -44,10 +44,10 @@ async def embed_league(team_a, team_b, league, match):
     embed.add_field(name="Inline Field 1", value="Inline Field 1", inline=True)
     embed.add_field(name="Inline Field 2", value="Inline Field 2", inline=True)
     embed.add_field(name="Inline Field 3", value="Inline Field 3", inline=True)
- 
+
     # embed.set_footer(text="Coucou") # footers can have icons too
     # embed.set_author(name="Team", icon_url="https://example.com/link-to-my-image.png")
     # embed.set_thumbnail(url="https://example.com/link-to-my-thumbnail.png")
     embed.set_image(url=f'{league["image"]}')
- 
+
     return embed

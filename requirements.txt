@@ -1,5 +1,5 @@
 # Connecting to remote services
-pymongo==4.4.0
+SQLAlchemy==2.0.17
 py-cord==2.4.1
 py-cord[speed]
 
@@ -9,6 +9,4 @@ requests==2.31.0
 
 # Enforcing a healthy code
 pre-commit==3.3.3
-black==23.3.0
-flake8==6.0.0
 flake8-black

@@ -1,15 +1,16 @@
-import os
 import logging
+import os
 import sys
+
 import discord
 import dotenv
-import kayo_lib
-from pymongo import MongoClient
+
+import kayo
 
 # Initializing core objects
 dotenv.load_dotenv()
-db_client = MongoClient(os.getenv("MONGO_URI"))
-db = db_client["kayo-testing"]
+# db_client = MongoClient(os.getenv("MONGO_URI"))
+# db = db_client["kayo-testing"]
 bot = discord.Bot()
 subscribe = bot.create_group("subscribe", "Subscribing to leagues and teams")
 listOfTeams = dict()
@@ -27,11 +28,11 @@ logger.addHandler(handler)
 # Fetching initial data
 @bot.event
 async def on_ready():
-    for league in kayo_lib.fetch_leagues() :
+    for league in kayo.fetch_leagues() :
         listOfLeagues[league["name"]] = league
     logging.info(f"Downloaded {len(listOfLeagues)} leagues.")
 
-    listOfEvents = kayo_lib.fetch_events(listOfLeagues)
+    listOfEvents = kayo.fetch_events(listOfLeagues)
     logging.info(f"Downloaded {len(listOfEvents)} schedules.")
 
     # print(listOfEvents)
@@ -45,7 +46,7 @@ async def on_ready():
 async def on_disconnect():
     logging.error(f"{bot.user} is disconnected ! 💣")
 
-@bot.command(description="Sends the bot's latency.") 
+@bot.command(description="Sends the bot's latency.")
 async def ping(ctx):
     latency_ms = round(bot.latency * 1000)
     await ctx.respond(f"Pong! Latency is {latency_ms} ms")
@@ -58,8 +59,8 @@ async def subscribe_league(
     if not ctx.author.guild_permissions.administrator :
         await ctx.respond(f'Sorry, only Administrators are allowed to run this command !')
     else :
-        db.alerts_leagues.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
-        await ctx.respond(f'League info : `{listOfLeagues[league]}` !') 
+        #db.alerts_leagues.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
+        await ctx.respond(f'League info : `{listOfLeagues[league]}` !')
 
 @subscribe.command(name="all_leagues", description="Subscribe to league alerts")
 async def subscribe_all_leagues(
@@ -69,7 +70,7 @@ async def subscribe_all_leagues(
         await ctx.respond(f'Sorry, only Administrators are allowed to run this command !')
     else :
         for league in listOfLeagues :
-            db.alerts_leagues.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
-        await ctx.respond(f'Subscribed to {len(listOfLeagues)} different leagues !') 
+            #db.alerts_leagues.insert_one({"channel_id" : ctx.channel_id, "league_id" : listOfLeagues[league]["id"]})
+        await ctx.respond(f'Subscribed to {len(listOfLeagues)} different leagues !')
 
 bot.run(os.getenv("DISCORD_TOKEN"))
