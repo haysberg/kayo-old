@@ -1,8 +1,11 @@
 {
-    "leagues" : [
-        ["Challengers Ascension EMEA", "osef"]
-    ],
-    "teams" : [
-        ["KC", "https://twitch.tv/kamet0"]
-    ]
+    "leagues" : {
+        "Challengers Ascension EMEA" : "https://haysberg.io",
+        "Game Changers LATAM" : "https://haysberg.io"
+    },
+    "teams" : {
+        "Acend": "https://www.twitch.tv/acendclub",
+        "Digital Athletics": "https://www.twitch.tv/digitalaths",
+        "KC": "https://twitch.tv/kamet0"
+    }
 }
