@@ -53,6 +53,24 @@ def get_leagues(ctx: discord.AutocompleteContext = None):
     """
     return [x[0] for x in instance.session.execute(select(League)).all()]
 
+def get_team_by_name(team_name):
+    return instance.session.execute(select(Team).where(Team.name == team_name)).one()[0]
+
+def get_league_by_slug(league_slug):
+    return instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+
+def get_alerts(ctx: discord.AutocompleteContext = None):
+    """_summary_.
+
+    Args:
+        ctx (discord.AutocompleteContext, optional): _description_.
+        Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    return [x[0] for x in instance.session.execute(select(Alert)).all()]
+
 
 def fetch_events_and_teams():
     """_summary_.
@@ -65,7 +83,6 @@ def fetch_events_and_teams():
     """
     url = "https://esports-api.service.valorantesports.com/persisted/val/getSchedule?hl=en-US&sport=val&leagueId="
     for league in get_leagues():
-        print(f'ROW !!!!!!!!!!!!!!!!!!! {league}')
         url = url + f'{league.id},'
     url = url[:-1]
     payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
@@ -98,6 +115,21 @@ def fetch_events_and_teams():
 
     return data
 
+def get_matches():
+    """_summary_.
+
+    Args:
+        ctx (discord.AutocompleteContext, optional): _description_.
+        Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    return [x[0] for x in instance.session.execute(select(Match)).all()]
+
+def get_upcoming_matches():
+    in_5_mins = datetime.now() + datetime.timedelta(minutes=5)
+    return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
 
 def get_teams(ctx: discord.AutocompleteContext = None):
     """_summary_.
@@ -176,7 +208,11 @@ def create_team_alert(team_name, channel_id):
     return alert
 
 
-async def embed_league(team_a, team_b, league, match):
+def get_alerts_teams(team_a, team_b):
+    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a).where(Alert.team_name == team_b)).all()]
+
+
+async def embed_alert(team_a, team_b, league, match):
     """_summary_.
 
     Args:
@@ -205,6 +241,12 @@ async def embed_league(team_a, team_b, league, match):
 
     return embed
 
+async def send_match_alert(channel_id, match):
+    channel = instance.bot.get_channel(channel_id)
+    team_a = get_team_by_name(match.team_a)
+    team_b = get_team_by_name(match.team_b)
+    league = get_league_by_slug(match.league_slug), 
+    await channel.send(embed=embed_alert(team_a, team_b, league, match))
 
 def refresh_data():
     """_summary_."""
@@ -323,13 +365,19 @@ async def subscribe_all_leagues(ctx: discord.ApplicationContext):
         await ctx.respond("Subscribed to all the different leagues !")
 
 
-@tasks.loop(seconds=60)
+@tasks.loop(seconds=300)
 async def checkForMatches():
     """_summary_.
 
     Returns:
         _type_: _description_
     """
+    for match in get_upcoming_matches():
+        for alert in get_alerts_teams(match.team_a, match.team_b):
+            if alert.team_name != None:
+                if alert.team_name == match.team_a or alert.team_name == match.team_b :
+                    send_match_alert(alert.channel_id, match)
+
     return 0
 
 instance.bot.run(os.getenv("DISCORD_TOKEN"))
