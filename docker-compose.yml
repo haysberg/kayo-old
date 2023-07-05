@@ -1,0 +1,11 @@
+version: '3'
+services:
+  kayayluh-twitch:
+    container_name: kayo
+    image: ghcr.io/haysberg/kayo-bot:main
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN=<your_discord_token_here>
+      RIOT_API_KEY=<riot_key_here>
+    volumes:
+      - /your/path/here:/app/db
