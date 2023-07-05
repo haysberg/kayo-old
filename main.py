@@ -270,14 +270,9 @@ def refresh_data():
 async def on_ready():
     """_summary_."""
     fetch_leagues()
-
     fetch_events_and_teams()
-    # logging.info(f"Downloaded {len(listOfLeagues)} leagues.")
 
-    # listOfEvents = kayo.fetch_events(listOfLeagues)
-    # logging.info(f"Downloaded {len(listOfEvents)} schedules.")
-
-    # logging.info(f"{bot.user} is online! 🚀")
+    logging.info(f"{instance.bot.user} is online! 🚀")
 
 
 @instance.bot.event
