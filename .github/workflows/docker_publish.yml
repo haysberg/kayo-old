@@ -7,7 +7,7 @@ name: Docker publish
 
 on:
   push:
-    branches: ['main', 'develop', 'origin/renovate/*']
+    branches: ['main', 'develop']
 
 env:
   REGISTRY: ghcr.io
