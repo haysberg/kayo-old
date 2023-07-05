@@ -2,7 +2,7 @@ version: '3'
 services:
   kayayluh-twitch:
     container_name: kayo
-    image: ghcr.io/haysberg/kayo-bot:main
+    image: ghcr.io/haysberg/kayo:main
     restart: unless-stopped
     environment:
       DISCORD_TOKEN=<your_discord_token_here>
