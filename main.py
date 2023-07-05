@@ -6,6 +6,7 @@ Returns:
 import logging
 import os
 from datetime import datetime
+import random
 
 import discord
 import requests
@@ -107,6 +108,7 @@ def fetch_events_and_teams():
             startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ"),
             bo_count=i["match"]["strategy"]["count"],
             league_slug=i["league"]["slug"],
+            blockName=i["blockName"],
             team_a=team_a.name,
             team_b=team_b.name
         )
@@ -228,21 +230,19 @@ async def embed_alert(team_a, team_b, league, match):
     Returns:
         _type_: _description_
     """
-    print(league)
     embed = discord.Embed(
         title=f'{team_a.name} ⚔️ {team_b.name}',
-        description=f'{league[0].name} - BO{match.bo_count}',
+        description=f'{league.name} · {match.blockName} · BO{match.bo_count}',
         color=discord.Colour.red(),
     )
 
-    embed.add_field(name="Inline Field 1", value="Inline Field 1", inline=True)
-    embed.add_field(name="Inline Field 2", value="Inline Field 2", inline=True)
-    embed.add_field(name="Inline Field 3", value="Inline Field 3", inline=True)
-
-    # embed.set_footer(text="Coucou") # footers can have icons too
-    # embed.set_author(name="Team", icon_url="https://example.com/link-to-my-image.png")
-    # embed.set_thumbnail(url="https://example.com/link-to-my-thumbnail.png")
-    embed.set_image(url=f'{league[0].image}')
+    if team_a.name in instance.referential["teams"]:
+        embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
+    if league.name in instance.referential["leagues"]:
+        embed.add_field(name="Official stream", value=f'[Link]({instance.referential["leagues"][league.name]})', inline=True)
+    if team_b.name in instance.referential["teams"]:
+        embed.add_field(name=f'{team_b.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_b.name]})', inline=True)
+    embed.set_thumbnail(url=f'{league.image}')
 
     return embed
 
@@ -250,8 +250,8 @@ async def send_match_alert(channel_id, match):
     channel = instance.bot.get_channel(channel_id)
     team_a = get_team_by_name(match.team_a)
     team_b = get_team_by_name(match.team_b)
-    league = get_league_by_slug(match.league_slug), 
-    await channel.send(embed=await embed_alert(team_a, team_b, league, match))
+    league = get_league_by_slug(match.league_slug),
+    await channel.send(embed=await embed_alert(team_a, team_b, league[0], match))
 
 def refresh_data():
     """_summary_."""

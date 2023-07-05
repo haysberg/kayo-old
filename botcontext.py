@@ -1,4 +1,5 @@
 """_summary_."""
+import json
 import logging
 import sys
 
@@ -35,3 +36,8 @@ class BotContext:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
         self.logger.addHandler(handler)
+
+        # Opening JSON file
+        with open('referential.json') as json_file:
+            self.referential = json.load(json_file)
+            
