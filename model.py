@@ -51,8 +51,9 @@ class Match(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     startTime: Mapped[DateTime] = mapped_column(DateTime(timezone=True))
-    bo_count: Mapped[int] = mapped_column()
+    bo_count: Mapped[int] = mapped_column(String(60))
     league_slug: Mapped[int] = mapped_column(ForeignKey("leagues.slug"))
+    blockName: Mapped[str] = mapped_column(String(60))
     team_a: Mapped[str] = mapped_column(ForeignKey("teams.name"))
     team_b: Mapped[str] = mapped_column(ForeignKey("teams.name"))
 
