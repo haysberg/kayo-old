@@ -211,6 +211,10 @@ def create_team_alert(team_name, channel_id):
 def get_alerts_teams(team_a, team_b):
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a).where(Alert.team_name == team_b)).all()]
 
+def get_alerts_league(league_slug):
+    league = instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
+
 
 async def embed_alert(team_a, team_b, league, match):
     """_summary_.
@@ -224,9 +228,10 @@ async def embed_alert(team_a, team_b, league, match):
     Returns:
         _type_: _description_
     """
+    print(league)
     embed = discord.Embed(
-        title=f'{team_a["name"]} ⚔️ {team_b["name"]}',
-        description=f'{league["name"]} - BO{match["strategy"]["count"]}',
+        title=f'{team_a.name} ⚔️ {team_b.name}',
+        description=f'{league[0].name} - BO{match.bo_count}',
         color=discord.Colour.red(),
     )
 
@@ -237,7 +242,7 @@ async def embed_alert(team_a, team_b, league, match):
     # embed.set_footer(text="Coucou") # footers can have icons too
     # embed.set_author(name="Team", icon_url="https://example.com/link-to-my-image.png")
     # embed.set_thumbnail(url="https://example.com/link-to-my-thumbnail.png")
-    embed.set_image(url=f'{league["image"]}')
+    embed.set_image(url=f'{league[0].image}')
 
     return embed
 
@@ -246,7 +251,7 @@ async def send_match_alert(channel_id, match):
     team_a = get_team_by_name(match.team_a)
     team_b = get_team_by_name(match.team_b)
     league = get_league_by_slug(match.league_slug), 
-    await channel.send(embed=embed_alert(team_a, team_b, league, match))
+    await channel.send(embed=await embed_alert(team_a, team_b, league, match))
 
 def refresh_data():
     """_summary_."""
@@ -259,7 +264,6 @@ def refresh_data():
 
 
 # BOT LOGIC
-
 
 # Fetching initial data
 @instance.bot.event
@@ -374,10 +378,21 @@ async def checkForMatches():
     """
     for match in get_upcoming_matches():
         for alert in get_alerts_teams(match.team_a, match.team_b):
-            if alert.team_name != None:
-                if alert.team_name == match.team_a or alert.team_name == match.team_b :
-                    send_match_alert(alert.channel_id, match)
-
+            await send_match_alert(alert.channel_id, match)
+        for alert in get_alerts_league(match.league_slug):
+            await send_match_alert(alert.channel_id, match)
     return 0
+
+@instance.bot.command(description="debug command")
+async def debug_alert(ctx):
+    """_summary_.
+
+    Args:
+        ctx (_type_): _description_
+    """
+    for match in get_matches():
+        await send_match_alert(ctx.channel_id, match)
+    await ctx.respond(f"Sending alerts your way...")
+
 
 instance.bot.run(os.getenv("DISCORD_TOKEN"))

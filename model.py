@@ -36,6 +36,9 @@ class Alert(Base):
 
     __table_args__ = (UniqueConstraint('channel_id', 'league_id', name='channel_league_alert_uc'), UniqueConstraint('channel_id', 'team_name', name='channel_team_alert_uc'))
 
+    def is_team_alert(self):
+        return self.team_name != None
+
 
 class Match(Base):
     """_summary_.
