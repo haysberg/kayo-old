@@ -5,15 +5,18 @@ Returns:
 """
 import logging
 import os
-from typing import List
+from datetime import datetime
 
 import discord
 import requests
+from discord.ext import tasks
 from sqlalchemy import select
 
 import botcontext
 from model import Alert
 from model import League
+from model import Match
+from model import Team
 
 global instance
 instance = botcontext.BotContext()
@@ -30,14 +33,15 @@ def fetch_leagues():
     payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
     response = requests.get(url, headers=payload)
     data = response.json()["data"]["leagues"]
-    all_leagues: List[League] = ()
+    all_leagues = []
     for league_dict in data:
         league = League(**{k: league_dict[k] for k in dir(League) if k in league_dict})
         all_leagues.append(league)
-    return all_leagues
+        instance.session.merge(league)
+    instance.session.commit()
 
 
-def get_league_names(ctx: discord.AutocompleteContext = None):
+def get_leagues(ctx: discord.AutocompleteContext = None):
     """_summary_.
 
     Args:
@@ -47,13 +51,10 @@ def get_league_names(ctx: discord.AutocompleteContext = None):
     Returns:
         _type_: _description_
     """
-    res = []
-    for row in instance.session.execute(select(League.name)).all():
-        res.append(str(row.name))
-    return res
+    return [x[0] for x in instance.session.execute(select(League)).all()]
 
 
-def fetch_events(listOfLeagues):
+def fetch_events_and_teams():
     """_summary_.
 
     Args:
@@ -63,15 +64,76 @@ def fetch_events(listOfLeagues):
         _type_: _description_
     """
     url = "https://esports-api.service.valorantesports.com/persisted/val/getSchedule?hl=en-US&sport=val&leagueId="
-    for league in listOfLeagues:
-        url = url + f'{listOfLeagues[league]["id"]},'
+    for league in get_leagues():
+        print(f'ROW !!!!!!!!!!!!!!!!!!! {league}')
+        url = url + f'{league.id},'
     url = url[:-1]
     payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
     response = requests.get(url, headers=payload)
 
-    print(url)
+    data = response.json()["data"]
 
-    return response.json()["data"]["schedule"]["events"]
+    # Going through all the teams in the upcoming events
+    for i in data["schedule"]["events"]:
+        # Creating both teams and flushing them to the DB
+        team_a_dict = i["match"]["teams"][0]
+        team_a = Team(**{k: team_a_dict[k] for k in dir(League) if k in team_a_dict})
+        instance.session.merge(team_a)
+
+        team_b_dict = i["match"]["teams"][1]
+        team_b = Team(**{k: team_b_dict[k] for k in dir(League) if k in team_b_dict})
+        instance.session.merge(team_b)
+
+        match_dict = i["match"]
+        match = Match(
+            id=match_dict["id"],
+            startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ"),
+            bo_count=i["match"]["strategy"]["count"],
+            league_slug=i["league"]["slug"],
+            team_a=team_a.name,
+            team_b=team_b.name
+        )
+        instance.session.merge(match)
+    instance.session.commit()
+
+    return data
+
+
+def get_teams(ctx: discord.AutocompleteContext = None):
+    """_summary_.
+
+    Args:
+        ctx (discord.AutocompleteContext, optional): _description_.
+        Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    return [x[0] for x in instance.session.execute(select(Team)).all()]
+
+
+def get_team_names(ctx: discord.AutocompleteContext = None):
+    """_summary_.
+
+    Args:
+        ctx (discord.AutocompleteContext, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    return [team.name for team in get_teams()]
+
+
+def get_league_names(ctx: discord.AutocompleteContext = None):
+    """_summary_.
+
+    Args:
+        ctx (discord.AutocompleteContext, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    return [league.name for league in get_leagues()]
 
 
 def create_league_alert(league_name, channel_id):
@@ -89,6 +151,26 @@ def create_league_alert(league_name, channel_id):
     ).one()
     league_id = league.id
     alert = Alert(channel_id=channel_id, league_id=league_id)
+    instance.session.add(alert)
+    instance.session.commit()
+    return alert
+
+
+def create_team_alert(team_name, channel_id):
+    """_summary_.
+
+    Args:
+        league_name (_type_): _description_
+        channel_id (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    team = instance.session.execute(
+        select(Team.name).where(Team.name == team_name)
+    ).one()
+    team_name = team.name
+    alert = Alert(channel_id=channel_id, team_name=team_name)
     instance.session.add(alert)
     instance.session.commit()
     return alert
@@ -124,6 +206,16 @@ async def embed_league(team_a, team_b, league, match):
     return embed
 
 
+def refresh_data():
+    """_summary_."""
+    instance.logger.info("Refreshing leagues...")
+    for league in fetch_leagues():
+        instance.session.merge(league)
+    instance.session.commit()
+
+    instance.logger.info("Refreshing events...")
+
+
 # BOT LOGIC
 
 
@@ -131,10 +223,9 @@ async def embed_league(team_a, team_b, league, match):
 @instance.bot.event
 async def on_ready():
     """_summary_."""
-    for league in fetch_leagues():
-        instance.session.merge(league)
-    instance.session.commit()
+    fetch_leagues()
 
+    fetch_events_and_teams()
     # logging.info(f"Downloaded {len(listOfLeagues)} leagues.")
 
     # listOfEvents = kayo.fetch_events(listOfLeagues)
@@ -182,7 +273,35 @@ async def subscribe_league(
     else:
         alert = create_league_alert(league, ctx.channel_id)
         instance.logger.info(f"Created alert {str(alert)}")
-        await ctx.respond(f"Successfully created an alert for {league}` !")
+
+        await ctx.respond(f"Successfully created an alert for {league} !")
+
+
+@instance.subscribe.command(name="team", description="Subscribe to team alerts")
+async def subscribe_team(
+    ctx: discord.ApplicationContext,
+    team: discord.Option(
+        discord.SlashCommandOptionType.string,
+        autocomplete=discord.utils.basic_autocomplete(get_team_names),
+    ),
+):
+    """_summary_.
+
+    Args:
+        ctx (discord.ApplicationContext): _description_
+        league (discord.Option, optional): _description_.
+        Defaults to discord.utils.basic_autocomplete(get_league_names) ).
+    """
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.respond(
+            "Sorry, only Administrators are allowed to run this command !"
+        )
+    else:
+        alert = create_team_alert(team, ctx.channel_id)
+        instance.logger.info(f"Created alert {str(alert)}")
+
+        # await ctx.respond(f"{[team.name for team in get_teams()]} !")
+        await ctx.respond(f"Successfully created an alert for {team} !")
 
 
 @instance.subscribe.command(
@@ -199,9 +318,18 @@ async def subscribe_all_leagues(ctx: discord.ApplicationContext):
             "Sorry, only Administrators are allowed to run this command !"
         )
     else:
-        for league in get_league_names():
-            create_league_alert(league, ctx.channel_id)
+        for league in get_leagues():
+            create_league_alert(league.name, ctx.channel_id)
         await ctx.respond("Subscribed to all the different leagues !")
 
+
+@tasks.loop(seconds=60)
+async def checkForMatches():
+    """_summary_.
+
+    Returns:
+        _type_: _description_
+    """
+    return 0
 
 instance.bot.run(os.getenv("DISCORD_TOKEN"))

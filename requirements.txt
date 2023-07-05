@@ -9,4 +9,4 @@ requests==2.31.0
 
 # Enforcing a healthy code
 pre-commit==3.3.3
-flake8-black
+flake8==6.0.0

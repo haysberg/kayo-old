@@ -1,24 +1,20 @@
-import os
-from typing import List
-
-import discord
-import requests
-from sqlalchemy import select
+"""_summary_."""
 import logging
 import sys
-import os
+
 import discord
 import dotenv
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 from model import Base
 
-import sqlalchemy as db
-
-from model import League
 
 class BotContext:
+    """_summary_."""
+
     def __init__(self):
+        """_summary_."""
         self.engine = (create_engine("sqlite://"))
         Session = sessionmaker(bind=self.engine)
 
@@ -35,7 +31,7 @@ class BotContext:
         self.logger = logging.getLogger('discord')
         self.logger = logging.getLogger()
         logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
         self.logger.addHandler(handler)
