@@ -5,7 +5,8 @@ services:
     image: ghcr.io/haysberg/kayo:main
     restart: unless-stopped
     environment:
-      DISCORD_TOKEN=<your_discord_token_here>
-      RIOT_API_KEY=<riot_key_here>
+      - DISCORD_TOKEN=<your_discord_token_here>
+      - RIOT_API_KEY=<riot_key_here>
+      - DEPLOYED=production
     volumes:
       - /your/path/here:/app/db
