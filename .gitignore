@@ -154,4 +154,5 @@ cython_debug/
 
 *.env
 *.pem
-test.prout
+/db/*.db
+/db
