@@ -1,24 +1,19 @@
 """_summary_."""
 import json
 import logging
-import sys
-
-import discord
-import dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from model import Base
-
-import logging
 import os
+import sys
 from datetime import datetime
 
 import discord
+import dotenv
 import requests
+from sqlalchemy import create_engine
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from model import Alert
+from model import Base
 from model import League
 from model import Match
 from model import Team
@@ -29,9 +24,9 @@ class BotContext:
 
     def __init__(self):
         """_summary_."""
-        if os.getenv("DEPLOYED") == "production" :
+        if os.getenv("DEPLOYED") == "production":
             self.engine = (create_engine("sqlite:///db/kayo.db"))
-        else :
+        else:
             self.engine = (create_engine("sqlite:///:memory:"))
         Session = sessionmaker(bind=self.engine)
 
@@ -45,15 +40,14 @@ class BotContext:
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
 
         # Logging
-        self.logger = logging.getLogger('discord')        
+        self.logger = logging.getLogger('discord')
 
-        if os.getenv("DEPLOYED") == "production" :
+        if os.getenv("DEPLOYED") == "production":
             self.logger.setLevel(logging.INFO)
             self.logger = logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-        else :
+        else:
             self.logger.setLevel(logging.DEBUG)
             self.logger = logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
-        
 
         self.logger = logging.getLogger()
         handler = logging.StreamHandler(sys.stdout)
@@ -100,11 +94,30 @@ def get_leagues(ctx: discord.AutocompleteContext = None):
     """
     return [x[0] for x in instance.session.execute(select(League)).all()]
 
+
 def get_team_by_name(team_name):
+    """_summary_.
+
+    Args:
+        team_name (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     return instance.session.execute(select(Team).where(Team.name == team_name)).one()[0]
 
+
 def get_league_by_slug(league_slug):
+    """_summary_.
+
+    Args:
+        league_slug (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     return instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+
 
 def get_alerts(ctx: discord.AutocompleteContext = None):
     """_summary_.
@@ -163,6 +176,7 @@ def fetch_events_and_teams():
 
     return data
 
+
 def get_matches():
     """_summary_.
 
@@ -175,9 +189,16 @@ def get_matches():
     """
     return [x[0] for x in instance.session.execute(select(Match)).all()]
 
+
 def get_upcoming_matches():
+    """_summary_.
+
+    Returns:
+        _type_: _description_
+    """
     in_5_mins = datetime.now() + datetime.timedelta(minutes=5)
     return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
+
 
 def get_teams(ctx: discord.AutocompleteContext = None):
     """_summary_.
@@ -257,9 +278,27 @@ def create_team_alert(team_name, channel_id):
 
 
 def get_alerts_teams(team_a, team_b):
+    """_summary_.
+
+    Args:
+        team_a (_type_): _description_
+        team_b (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a).where(Alert.team_name == team_b)).all()]
 
+
 def get_alerts_league(league_slug):
+    """_summary_.
+
+    Args:
+        league_slug (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     league = instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
 
@@ -292,12 +331,20 @@ async def embed_alert(team_a, team_b, league, match):
 
     return embed
 
+
 async def send_match_alert(channel_id, match):
+    """_summary_.
+
+    Args:
+        channel_id (_type_): _description_
+        match (_type_): _description_
+    """
     channel = instance.bot.get_channel(channel_id)
     team_a = get_team_by_name(match.team_a)
     team_b = get_team_by_name(match.team_b)
     league = get_league_by_slug(match.league_slug),
     await channel.send(embed=await embed_alert(team_a, team_b, league[0], match))
+
 
 def refresh_data():
     """_summary_."""

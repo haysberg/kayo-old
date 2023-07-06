@@ -9,11 +9,24 @@ import os
 import discord
 from discord.ext import commands
 from discord.ext import tasks
-from kayo import *
+
+from kayo import create_league_alert
+from kayo import create_team_alert
+from kayo import fetch_events_and_teams
+from kayo import fetch_leagues
+from kayo import get_alerts_league
+from kayo import get_alerts_teams
+from kayo import get_league_names
+from kayo import get_leagues
+from kayo import get_matches
+from kayo import get_team_names
+from kayo import get_upcoming_matches
+from kayo import instance
+from kayo import send_match_alert
 
 # BOT LOGIC
 
-# Fetching initial data
+
 @instance.bot.event
 async def on_ready():
     """_summary_."""
@@ -37,7 +50,7 @@ async def ping(ctx):
         ctx (_type_): _description_
     """
     latency_ms = round(instance.bot.latency * 1000)
-    await ctx.respond(f"Pong! Latency is {latency_ms} ms")
+    await ctx.respond(f"Pong! `{latency_ms}` ms")
 
 
 @instance.subscribe.command(name="league", description="Subscribe to league alerts")
@@ -60,9 +73,8 @@ async def subscribe_league(
         alert = create_league_alert(league, ctx.channel_id)
         instance.logger.info(f"Created alert {str(alert)}")
         await ctx.respond(f"Successfully created an alert for {league} !")
-    except discord.ext.commands.MissingPermissions:
+    except discord.ext.commands.errors.MissingPermissions:
         await ctx.respond("You need to have the 'Manage Messages' permission to run this command in a server. Feel free to send me a DM !")
-
 
 
 @instance.subscribe.command(name="team", description="Subscribe to team alerts")
@@ -85,7 +97,7 @@ async def subscribe_team(
         alert = create_team_alert(team, ctx.channel_id)
         instance.logger.info(f"Created alert {str(alert)}")
         await ctx.respond(f"Successfully created an alert for {team} !")
-    except discord.ext.commands.MissingPermissions:
+    except discord.ext.commands.errors.MissingPermissions:
         await ctx.respond("You need to have the 'Manage Messages' permission to run this command in a server. Feel free to send me a DM !")
 
 
@@ -97,13 +109,29 @@ async def subscribe_all_leagues(ctx: discord.ApplicationContext):
     Args:
         ctx (discord.ApplicationContext): _description_
     """
-    
     try:
         for league in get_leagues():
             create_league_alert(league.name, ctx.channel_id)
         await ctx.respond("Subscribed to all the different leagues !")
-    except discord.ext.commands.MissingPermissions:
+    except discord.ext.commands.errors.MissingPermissions as e:
+        instance.logger.error(e)
+
+
+@instance.bot.event
+async def on_application_command_error(ctx: discord.ApplicationContext, error: discord.DiscordException):
+    """_summary_.
+
+    Args:
+        ctx (discord.ApplicationContext): _description_
+        error (discord.DiscordException): _description_
+
+    Raises:
+        error: _description_
+    """
+    if isinstance(error, discord.ext.commands.errors.MissingPermissions):
         await ctx.respond("You need to have the 'Manage Messages' permission to run this command in a server. Feel free to send me a DM !")
+    else:
+        raise error  # Here we raise other errors to ensure they aren't ignored
 
 
 @tasks.loop(seconds=300)
@@ -121,7 +149,7 @@ async def checkForMatches():
     return 0
 
 
-if os.getenv("DEPLOYED") != "production" :
+if os.getenv("DEPLOYED") != "production":
     @instance.bot.command(description="debug command")
     @commands.has_permissions(manage_messages=True)
     async def debug_alert(ctx):
@@ -132,7 +160,7 @@ if os.getenv("DEPLOYED") != "production" :
         """
         for match in get_matches():
             await send_match_alert(ctx.channel_id, match)
-        await ctx.respond(f"Sending alerts your way...")
+        await ctx.respond("Sending alerts your way...")
 
 
 instance.bot.run(os.getenv("DISCORD_TOKEN"))
