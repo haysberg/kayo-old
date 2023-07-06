@@ -30,7 +30,7 @@ class BotContext:
     def __init__(self):
         """_summary_."""
         if os.getenv("DEPLOYED") == "production" :
-            self.engine = (create_engine("sqlite:///app/kayo.db"))
+            self.engine = (create_engine("sqlite:///db/kayo.db"))
         else :
             self.engine = (create_engine("sqlite:///:memory:"))
         Session = sessionmaker(bind=self.engine)
