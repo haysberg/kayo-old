@@ -20,10 +20,10 @@ from model import Team
 
 
 class BotContext:
-    """_summary_."""
+    """Contains all the useful objects to interect with the database and the logger."""
 
     def __init__(self):
-        """_summary_."""
+        """Creates all the objects."""
         if os.getenv("DEPLOYED") == "production":
             self.engine = (create_engine("sqlite:///db/kayo.db"))
         else:
@@ -64,11 +64,7 @@ instance = BotContext()
 
 
 def fetch_leagues():
-    """_summary_.
-
-    Returns:
-        _type_: _description_
-    """
+    """Downloads all the leagues and inserts them in the database."""
     # The league endpoint
     url = "https://esports-api.service.valorantesports.com/persisted/val/getLeagues?hl=en-US&sport=val"
     payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
@@ -83,63 +79,61 @@ def fetch_leagues():
 
 
 def get_leagues(ctx: discord.AutocompleteContext = None):
-    """_summary_.
+    """Gets all the leagues currently in the database.
 
     Args:
-        ctx (discord.AutocompleteContext, optional): _description_.
+        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion.
         Defaults to None.
 
     Returns:
-        _type_: _description_
+        List[League]: The list of leagues.
     """
     return [x[0] for x in instance.session.execute(select(League)).all()]
 
 
 def get_team_by_name(team_name):
-    """_summary_.
+    """Returns a team object based on its name.
 
     Args:
-        team_name (_type_): _description_
+        team_name (str): The team's name.
 
     Returns:
-        _type_: _description_
+        Team: A single team object.
     """
     return instance.session.execute(select(Team).where(Team.name == team_name)).one()[0]
 
 
 def get_league_by_slug(league_slug):
-    """_summary_.
+    """Returns a League object based on its slug.
 
     Args:
-        league_slug (_type_): _description_
+        league_slug (str): The league's slug.
 
     Returns:
-        _type_: _description_
+        League: A single League object.
     """
     return instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
 
 
 def get_alerts(ctx: discord.AutocompleteContext = None):
-    """_summary_.
+    """Gets all the alerts from the database.
 
     Args:
-        ctx (discord.AutocompleteContext, optional): _description_.
+        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion.
         Defaults to None.
 
     Returns:
-        _type_: _description_
+        List[Alert]: All the alerts in the database.
     """
     return [x[0] for x in instance.session.execute(select(Alert)).all()]
 
 
 def fetch_events_and_teams():
-    """_summary_.
-
-    Args:
-        listOfLeagues (_type_): _description_
+    """Downloads events and teams from the Riot API.
+    Then inserts it in the database.
 
     Returns:
-        _type_: _description_
+        dict : the response of the API as a JSON
     """
     url = "https://esports-api.service.valorantesports.com/persisted/val/getSchedule?hl=en-US&sport=val&leagueId="
     for league in get_leagues():
@@ -178,74 +172,74 @@ def fetch_events_and_teams():
 
 
 def get_matches():
-    """_summary_.
+    """Gets all the matches in the database.
 
     Args:
-        ctx (discord.AutocompleteContext, optional): _description_.
+        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion.
         Defaults to None.
 
     Returns:
-        _type_: _description_
+       List[Match]: All the matches in the database.
     """
     return [x[0] for x in instance.session.execute(select(Match)).all()]
 
 
 def get_upcoming_matches():
-    """_summary_.
+    """Gets all the matches happening in the next 5 minutes in the database.
 
     Returns:
-        _type_: _description_
+        List[Matches]: All the matches happening in the next 5 minutes.
     """
     in_5_mins = datetime.now() + datetime.timedelta(minutes=5)
     return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
 
 
 def get_teams(ctx: discord.AutocompleteContext = None):
-    """_summary_.
+    """Get all the teams currently in the database.
 
     Args:
-        ctx (discord.AutocompleteContext, optional): _description_.
+        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion.
         Defaults to None.
 
     Returns:
-        _type_: _description_
+        List[Team]: All the Teams in the database.
     """
     return [x[0] for x in instance.session.execute(select(Team)).all()]
 
 
 def get_team_names(ctx: discord.AutocompleteContext = None):
-    """_summary_.
+    """Gets a list of all the team names currently in the database.
 
     Args:
-        ctx (discord.AutocompleteContext, optional): _description_. Defaults to None.
+        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion. Defaults to None.
 
     Returns:
-        _type_: _description_
+        List[str]: List of Team names.
     """
     return [team.name for team in get_teams()]
 
 
 def get_league_names(ctx: discord.AutocompleteContext = None):
-    """_summary_.
+    """Gets a list of all the League names currently in the database.
 
     Args:
-        ctx (discord.AutocompleteContext, optional): _description_. Defaults to None.
+        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion. Defaults to None.
 
     Returns:
-        _type_: _description_
+        List[str]: List of League names.
     """
     return [league.name for league in get_leagues()]
 
 
 def create_league_alert(league_name, channel_id):
-    """_summary_.
+    """Creates an Alert to get notifications for a specific League.
 
     Args:
-        league_name (_type_): _description_
-        channel_id (_type_): _description_
+        league_name (str): The League's name.
+        channel_id (int): Integer representing a single Discord channel.
 
     Returns:
-        _type_: _description_
+        Alert: The Alert object created.
     """
     league = instance.session.execute(
         select(League.id).where(League.name == league_name)
@@ -258,14 +252,14 @@ def create_league_alert(league_name, channel_id):
 
 
 def create_team_alert(team_name, channel_id):
-    """_summary_.
+    """Creates an Alert to get notifications for a specific Team.
 
     Args:
-        league_name (_type_): _description_
-        channel_id (_type_): _description_
+        team_name (str): The Team's name.
+        channel_id (int): Integer representing a single Discord channel.
 
     Returns:
-        _type_: _description_
+        Alert: The Alert object created.
     """
     team = instance.session.execute(
         select(Team.name).where(Team.name == team_name)
@@ -278,42 +272,42 @@ def create_team_alert(team_name, channel_id):
 
 
 def get_alerts_teams(team_a, team_b):
-    """_summary_.
+    """Retrieves Alert objects from the database based on the Team the Alert follows.
 
     Args:
-        team_a (_type_): _description_
-        team_b (_type_): _description_
+        team_a (str): One of the Team's names facing each other.
+        team_b (str): One of the Team's names facing each other.
 
     Returns:
-        _type_: _description_
+        List[Alert]: List of alerts 
     """
-    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a).where(Alert.team_name == team_b)).all()]
+    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a or Alert.team_name == team_b)).all()]
 
 
 def get_alerts_league(league_slug):
-    """_summary_.
+    """Retrieves Alert objects from the database based on the League the Alert follows.
 
     Args:
-        league_slug (_type_): _description_
+        league_slug (str): League.slug of the League object
 
     Returns:
-        _type_: _description_
+        List[Alert]: List of alerts 
     """
     league = instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
 
 
 async def embed_alert(team_a, team_b, league, match):
-    """_summary_.
+    """Creates a discord.Embed object to be sent by send_match_alert().
 
     Args:
-        team_a (_type_): _description_
-        team_b (_type_): _description_
-        league (_type_): _description_
-        match (_type_): _description_
+        team_a (Team): Team object for the notification
+        team_b (Team): Team object for the notification
+        league (League): League in which both Teams are facing off
+        match (Match): The Match in which both Teams will face off
 
     Returns:
-        _type_: _description_
+        discord.Embed: The discord.Embed object representing the alert
     """
     embed = discord.Embed(
         title=f'{team_a.name} ⚔️ {team_b.name}',
@@ -333,11 +327,11 @@ async def embed_alert(team_a, team_b, league, match):
 
 
 async def send_match_alert(channel_id, match):
-    """_summary_.
+    """Sends an alert to a specified channel_id for a specific Match.
 
     Args:
-        channel_id (_type_): _description_
-        match (_type_): _description_
+        channel_id (int): Integer representing a single Discord channel.
+        match (Match): Match object for which we wish to send an Alert.
     """
     channel = instance.bot.get_channel(channel_id)
     team_a = get_team_by_name(match.team_a)
@@ -347,7 +341,7 @@ async def send_match_alert(channel_id, match):
 
 
 def refresh_data():
-    """_summary_."""
+    """Fetches the data again."""
     instance.logger.info("Refreshing leagues...")
     for league in fetch_leagues():
         instance.session.merge(league)
