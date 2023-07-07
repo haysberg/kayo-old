@@ -20,7 +20,7 @@ from model import Team
 
 
 class BotContext:
-    """Contains all the useful objects to interect with the database and the logger."""
+    """Contains all the useful objects to interact with the database and the logger."""
 
     def __init__(self):
         """Creates all the objects."""
@@ -129,8 +129,7 @@ def get_alerts(ctx: discord.AutocompleteContext = None):
 
 
 def fetch_events_and_teams():
-    """Downloads events and teams from the Riot API.
-    Then inserts it in the database.
+    """Downloads events and teams from the Riot API. Then inserts it in the database.
 
     Returns:
         dict : the response of the API as a JSON
@@ -279,7 +278,7 @@ def get_alerts_teams(team_a, team_b):
         team_b (str): One of the Team's names facing each other.
 
     Returns:
-        List[Alert]: List of alerts 
+        List[Alert]: List of alerts
     """
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a or Alert.team_name == team_b)).all()]
 
@@ -291,7 +290,7 @@ def get_alerts_league(league_slug):
         league_slug (str): League.slug of the League object
 
     Returns:
-        List[Alert]: List of alerts 
+        List[Alert]: List of alerts
     """
     league = instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
