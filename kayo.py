@@ -208,7 +208,7 @@ def get_upcoming_matches():
     """
     try:
         in_5_mins = datetime.now() + timedelta(minutes=5)
-        instance.logger.info(f'Checking for new matches inbetween {datetime.now()} and {in_5_mins}')
+        instance.logger.info(f'Checking for new matches in between {datetime.now()} and {in_5_mins}')
         return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime, Match.startTime > datetime.now())).all()]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting matches from the database: {e}')
