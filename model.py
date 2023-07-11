@@ -49,7 +49,7 @@ class Match(Base):
     """Represents a Match between two teams.
 
     Args:
-        Base : Base class
+        Base: Base class
     """
 
     __tablename__ = "matches"
@@ -67,7 +67,7 @@ class League(Base):
     """An object used to represent a League.
 
     Args:
-        Base : Base class.
+        Base: Base class.
     """
 
     __tablename__ = "leagues"
