@@ -30,8 +30,8 @@ from kayo import send_match_alert
 @instance.bot.event
 async def on_ready():
     """Executed when the Discord bot boots up."""
-    fetch_leagues()
-    fetch_events_and_teams()
+    checkForMatches.start()
+    updateDatabase.start()
 
     logging.info(f"{instance.bot.user} is online! 🚀")
 
@@ -90,7 +90,7 @@ async def subscribe_team(
 
     Args:
         ctx (discord.ApplicationContext): Information about the current message.
-        league (discord.Option, optional): Autocomplete.
+        team (discord.Option, optional): Autocomplete.
         Defaults to discord.utils.basic_autocomplete(get_league_names) ).
     """
     try:
@@ -109,12 +109,13 @@ async def subscribe_all_leagues(ctx: discord.ApplicationContext):
     Args:
         ctx (discord.ApplicationContext): Information about the current message.
     """
+    instance.logger.info('Creating alert...')
     try:
         for league in get_leagues():
             create_league_alert(league.name, ctx.channel_id)
         await ctx.respond("Subscribed to all the different leagues !")
     except discord.ext.commands.errors.MissingPermissions as e:
-        instance.logger.error(e)
+        instance.logger.error(str(e))
 
 
 @instance.bot.event
@@ -137,11 +138,20 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
 @tasks.loop(seconds=300)
 async def checkForMatches():
     """Checks if there is new upcoming matches."""
+    instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
         for alert in get_alerts_teams(match.team_a, match.team_b):
             await send_match_alert(alert.channel_id, match)
         for alert in get_alerts_league(match.league_slug):
             await send_match_alert(alert.channel_id, match)
+
+
+@tasks.loop(seconds=600)
+async def updateDatabase():
+    """Checks if there is new upcoming matches."""
+    instance.logger.info("Updating the database periodically...")
+    fetch_leagues()
+    fetch_events_and_teams()
 
 
 if os.getenv("DEPLOYED") != "production":

@@ -10,7 +10,9 @@ import dotenv
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy import select
+import sqlalchemy
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 
 from model import Alert
 from model import Base
@@ -18,6 +20,8 @@ from model import League
 from model import Match
 from model import Team
 
+dotenv.load_dotenv()
+LOGLEVEL = os.environ.get('LOGLEVEL').upper()
 
 class BotContext:
     """Contains all the useful objects to interact with the database and the logger."""
@@ -35,19 +39,13 @@ class BotContext:
         Base.metadata.create_all(self.engine)
 
         # Initializing core objects
-        dotenv.load_dotenv()
         self.bot = discord.Bot()
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
 
         # Logging
         self.logger = logging.getLogger('discord')
-
-        if os.getenv("DEPLOYED") == "production":
-            self.logger.setLevel(logging.INFO)
-            self.logger = logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-        else:
-            self.logger.setLevel(logging.DEBUG)
-            self.logger = logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
+        self.logger.setLevel(level=LOGLEVEL)
+        self.logger = logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
 
         self.logger = logging.getLogger()
         handler = logging.StreamHandler(sys.stdout)
@@ -66,16 +64,22 @@ instance = BotContext()
 def fetch_leagues():
     """Downloads all the leagues and inserts them in the database."""
     # The league endpoint
+    instance.logger.info('Fetching Leagues...')
     url = "https://esports-api.service.valorantesports.com/persisted/val/getLeagues?hl=en-US&sport=val"
-    payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
-    response = requests.get(url, headers=payload)
-    data = response.json()["data"]["leagues"]
-    all_leagues = []
-    for league_dict in data:
-        league = League(**{k: league_dict[k] for k in dir(League) if k in league_dict})
-        all_leagues.append(league)
-        instance.session.merge(league)
-    instance.session.commit()
+    try:
+        payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
+        response = requests.get(url, headers=payload)
+        data = response.json()["data"]["leagues"]
+        all_leagues = []
+        for league_dict in data:
+            league = League(**{k: league_dict[k] for k in dir(League) if k in league_dict})
+            all_leagues.append(league)
+            instance.session.merge(league)
+        instance.session.commit()
+    except requests.RequestException as e :
+        instance.logger.error(f'Error while fetching the leagues : {e}')
+    except SQLAlchemyError as e :
+        instance.logger.error(f'Error while inserting leagues into the database : {e}')
 
 
 def get_leagues(ctx: discord.AutocompleteContext = None):
@@ -88,7 +92,11 @@ def get_leagues(ctx: discord.AutocompleteContext = None):
     Returns:
         List[League]: The list of leagues.
     """
-    return [x[0] for x in instance.session.execute(select(League)).all()]
+    try :
+        instance.logger.info('Getting all the leagues from DB...')
+        return [x[0] for x in instance.session.execute(select(League)).all()]
+    except SQLAlchemyError as e :
+        instance.logger.error(f'Error while getting leagues from the database : {e}')
 
 
 def get_team_by_name(team_name):
@@ -100,7 +108,10 @@ def get_team_by_name(team_name):
     Returns:
         Team: A single team object.
     """
-    return instance.session.execute(select(Team).where(Team.name == team_name)).one()[0]
+    try :
+        return instance.session.execute(select(Team).where(Team.name == team_name)).one()[0]
+    except SQLAlchemyError as e :
+        instance.logger.error(f'Error while getting a league from the database : {e}')
 
 
 def get_league_by_slug(league_slug):
@@ -112,7 +123,10 @@ def get_league_by_slug(league_slug):
     Returns:
         League: A single League object.
     """
-    return instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+    try :
+        return instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+    except SQLAlchemyError as e :
+            instance.logger.error(f'Error while getting a league from the database : {e}')
 
 
 def get_alerts(ctx: discord.AutocompleteContext = None):
@@ -125,7 +139,10 @@ def get_alerts(ctx: discord.AutocompleteContext = None):
     Returns:
         List[Alert]: All the alerts in the database.
     """
-    return [x[0] for x in instance.session.execute(select(Alert)).all()]
+    try :
+        return [x[0] for x in instance.session.execute(select(Alert)).all()]
+    except SQLAlchemyError as e :
+                instance.logger.error(f'Error while getting an alert from the database : {e}')
 
 
 def fetch_events_and_teams():
@@ -180,7 +197,10 @@ def get_matches():
     Returns:
        List[Match]: All the matches in the database.
     """
-    return [x[0] for x in instance.session.execute(select(Match)).all()]
+    try:
+        return [x[0] for x in instance.session.execute(select(Match)).all()]
+    except SQLAlchemyError as e :
+        instance.logger.error(f'Error while getting matches from the database : {e}')
 
 
 def get_upcoming_matches():
@@ -189,8 +209,11 @@ def get_upcoming_matches():
     Returns:
         List[Matches]: All the matches happening in the next 5 minutes.
     """
-    in_5_mins = datetime.now() + datetime.timedelta(minutes=5)
-    return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
+    try:
+        in_5_mins = datetime.now() + datetime.timedelta(minutes=5)
+        return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
+    except SQLAlchemyError as e :
+            instance.logger.error(f'Error while getting matches from the database : {e}')
 
 
 def get_teams(ctx: discord.AutocompleteContext = None):
@@ -240,14 +263,20 @@ def create_league_alert(league_name, channel_id):
     Returns:
         Alert: The Alert object created.
     """
-    league = instance.session.execute(
-        select(League.id).where(League.name == league_name)
-    ).one()
-    league_id = league.id
-    alert = Alert(channel_id=channel_id, league_id=league_id)
-    instance.session.add(alert)
-    instance.session.commit()
-    return alert
+    instance.logger.info(f'Creating an alert for league name : {league_name} in channel id : {channel_id}')
+    try:
+        league = instance.session.execute(
+            select(League.id).where(League.name == league_name)
+        ).one()
+        league_id = league.id
+        alert = Alert(channel_id=channel_id, league_id=league_id)
+        instance.session.add(alert)
+        instance.session.commit()
+        instance.logger.info('Successfully created an alert !')
+        return alert
+    except SQLAlchemyError as e:
+        instance.logger.error(f'Error while creating alert : {str(e)}')
+        raise discord.ext.commands.errors.CommandError
 
 
 def create_team_alert(team_name, channel_id):
