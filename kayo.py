@@ -5,6 +5,7 @@ import os
 import sys
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 
 import discord
 import dotenv
@@ -175,7 +176,7 @@ def fetch_events_and_teams():
         match_dict = i["match"]
         match = Match(
             id=match_dict["id"],
-            startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ"),
+            startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
             bo_count=i["match"]["strategy"]["count"],
             league_slug=i["league"]["slug"],
             blockName=i["blockName"],
