@@ -208,7 +208,7 @@ def get_upcoming_matches():
     """
     try:
         in_5_mins = datetime.now() + timedelta(minutes=5)
-        return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
+        return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime and Match.startTime < datetime.now())).all()]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting matches from the database: {e}')
 
@@ -339,6 +339,8 @@ async def embed_alert(team_a, team_b, league, match):
         description=f'{league.name} · {match.blockName} · BO{match.bo_count}',
         color=discord.Colour.red(),
     )
+
+    embed.set_footer(text=f'Starts at {match.startTime.strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
 
     if team_a.name in instance.referential["teams"]:
         embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
