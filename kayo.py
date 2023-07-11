@@ -4,13 +4,13 @@ import logging
 import os
 import sys
 from datetime import datetime
+from datetime import timedelta
 
 import discord
 import dotenv
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy import select
-import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -190,10 +190,6 @@ def fetch_events_and_teams():
 def get_matches():
     """Gets all the matches in the database.
 
-    Args:
-        ctx (discord.AutocompleteContext, optional): Used when called from autocompletion.
-        Defaults to None.
-
     Returns:
        List[Match]: All the matches in the database.
     """
@@ -210,7 +206,7 @@ def get_upcoming_matches():
         List[Matches]: All the matches happening in the next 5 minutes.
     """
     try:
-        in_5_mins = datetime.now() + datetime.timedelta(minutes=5)
+        in_5_mins = datetime.now() + timedelta(minutes=5)
         return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
     except SQLAlchemyError as e :
             instance.logger.error(f'Error while getting matches from the database : {e}')
