@@ -11,20 +11,20 @@ from sqlalchemy.orm import mapped_column
 
 
 class Base(DeclarativeBase):
-    """_summary_.
+    """Base SQLalchemy Class.
 
     Args:
-        DeclarativeBase (_type_): _description_
+        DeclarativeBase (sqlalchemy.orm.DeclarativeBase): Don't question it.
     """
 
     pass
 
 
 class Alert(Base):
-    """_summary_.
+    """A Class used to represent an alert.
 
     Args:
-        Base (_type_): _description_
+        Base (kayo.Base): Default ORM Base Class.
     """
 
     __tablename__ = "alerts"
@@ -37,19 +37,19 @@ class Alert(Base):
     __table_args__ = (UniqueConstraint('channel_id', 'league_id', name='channel_league_alert_uc'), UniqueConstraint('channel_id', 'team_name', name='channel_team_alert_uc'))
 
     def is_team_alert(self):
-        """_summary_.
+        """Checks if an alert is for a Team.
 
         Returns:
-            _type_: _description_
+            Boolean: If an alert is for a Team.
         """
         return self.team_name is not None
 
 
 class Match(Base):
-    """_summary_.
+    """Represents a Match between two teams.
 
     Args:
-        Base (_type_): _description_
+        Base: Base class
     """
 
     __tablename__ = "matches"
@@ -64,10 +64,10 @@ class Match(Base):
 
 
 class League(Base):
-    """_summary_.
+    """An object used to represent a League.
 
     Args:
-        Base (_type_): _description_
+        Base: Base class.
     """
 
     __tablename__ = "leagues"
@@ -79,19 +79,19 @@ class League(Base):
     image: Mapped[str] = mapped_column(String(500))
 
     def __repr__(self) -> str:
-        """_summary_.
+        """Formats the representation when using print() for example.
 
         Returns:
-            str: _description_
+            str: Description of self.
         """
         return f"League(id={self.id!r}, name={self.name!r}, slug={self.slug!r}), region={self.region!r})"
 
 
 class Team(Base):
-    """_summary_.
+    """Represents a Team.
 
     Args:
-        Base (_type_): _description_
+        Base: Base class.
     """
 
     __tablename__ = "teams"

@@ -29,25 +29,25 @@ from kayo import send_match_alert
 
 @instance.bot.event
 async def on_ready():
-    """_summary_."""
-    fetch_leagues()
-    fetch_events_and_teams()
+    """Executed when the Discord bot boots up."""
+    checkForMatches.start()
+    updateDatabase.start()
 
     logging.info(f"{instance.bot.user} is online! 🚀")
 
 
 @instance.bot.event
 async def on_disconnect():
-    """_summary_."""
+    """What happens when the bot is disconnected from Discord."""
     logging.error(f"{instance.bot.user} is disconnected ! 💣")
 
 
 @instance.bot.command(description="Sends the bot's latency.")
 async def ping(ctx):
-    """_summary_.
+    """Simple ping command.
 
     Args:
-        ctx (_type_): _description_
+        ctx (discord.ApplicationContext): Information about the current message.
     """
     latency_ms = round(instance.bot.latency * 1000)
     await ctx.respond(f"Pong! `{latency_ms}` ms")
@@ -62,12 +62,12 @@ async def subscribe_league(
         autocomplete=discord.utils.basic_autocomplete(get_league_names),
     ),
 ):
-    """_summary_.
+    """Subscribes the channel to a league.
 
     Args:
-        ctx (discord.ApplicationContext): _description_
-        league (discord.Option, optional): _description_.
-        Defaults to discord.utils.basic_autocomplete(get_league_names) ).
+        ctx (discord.ApplicationContext): Information about the current message.
+        league (discord.Option): Name of the League to follow.
+        Defaults to discord.utils.basic_autocomplete(get_league_names)).
     """
     try:
         alert = create_league_alert(league, ctx.channel_id)
@@ -86,11 +86,11 @@ async def subscribe_team(
         autocomplete=discord.utils.basic_autocomplete(get_team_names),
     ),
 ):
-    """_summary_.
+    """Subscribe the Discord channel to a Team.
 
     Args:
-        ctx (discord.ApplicationContext): _description_
-        league (discord.Option, optional): _description_.
+        ctx (discord.ApplicationContext): Information about the current message.
+        team (discord.Option, optional): Autocomplete.
         Defaults to discord.utils.basic_autocomplete(get_league_names) ).
     """
     try:
@@ -104,29 +104,30 @@ async def subscribe_team(
 @instance.subscribe.command(name="all_leagues", description="Subscribe to league alerts")
 @commands.has_permissions(manage_messages=True)
 async def subscribe_all_leagues(ctx: discord.ApplicationContext):
-    """_summary_.
+    """Susbcribe the channel to all the different leagues.
 
     Args:
-        ctx (discord.ApplicationContext): _description_
+        ctx (discord.ApplicationContext): Information about the current message.
     """
+    instance.logger.info('Creating alert...')
     try:
         for league in get_leagues():
             create_league_alert(league.name, ctx.channel_id)
         await ctx.respond("Subscribed to all the different leagues !")
     except discord.ext.commands.errors.MissingPermissions as e:
-        instance.logger.error(e)
+        instance.logger.error(str(e))
 
 
 @instance.bot.event
 async def on_application_command_error(ctx: discord.ApplicationContext, error: discord.DiscordException):
-    """_summary_.
+    """Handler for command errors inside Discord.
 
     Args:
-        ctx (discord.ApplicationContext): _description_
-        error (discord.DiscordException): _description_
+        ctx (discord.ApplicationContext): Information about the current message.
+        error (discord.DiscordException): The Discord exception data.
 
     Raises:
-        error: _description_
+        error: Just here to handle an exception-ception.
     """
     if isinstance(error, discord.ext.commands.errors.MissingPermissions):
         await ctx.respond("You need to have the 'Manage Messages' permission to run this command in a server. Feel free to send me a DM !")
@@ -136,27 +137,31 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
 
 @tasks.loop(seconds=300)
 async def checkForMatches():
-    """_summary_.
-
-    Returns:
-        _type_: _description_
-    """
+    """Checks if there is new upcoming matches."""
+    instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
         for alert in get_alerts_teams(match.team_a, match.team_b):
             await send_match_alert(alert.channel_id, match)
         for alert in get_alerts_league(match.league_slug):
             await send_match_alert(alert.channel_id, match)
-    return 0
+
+
+@tasks.loop(seconds=600)
+async def updateDatabase():
+    """Checks if there is new upcoming matches."""
+    instance.logger.info("Updating the database periodically...")
+    fetch_leagues()
+    fetch_events_and_teams()
 
 
 if os.getenv("DEPLOYED") != "production":
     @instance.bot.command(description="debug command")
     @commands.has_permissions(manage_messages=True)
     async def debug_alert(ctx):
-        """_summary_.
+        """Sends a buttload of alerts for debugging the format.
 
         Args:
-            ctx (_type_): _description_
+            ctx (discord.ApplicationContext): Information about the current message.
         """
         for match in get_matches():
             await send_match_alert(ctx.channel_id, match)

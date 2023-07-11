@@ -156,3 +156,7 @@ cython_debug/
 *.pem
 /db/*.db
 /db
+/.idea
+/.idea/*
+venv
+venv/*
