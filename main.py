@@ -220,7 +220,7 @@ async def checkForMatches():
             await send_match_alert(alert.channel_id, match)
 
 
-@tasks.loop(seconds=600)
+@tasks.loop(seconds=1800)
 async def updateDatabase():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Updating the database periodically...")
