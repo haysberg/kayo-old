@@ -342,7 +342,7 @@ async def embed_alert(team_a, team_b, league, match):
         color=discord.Colour.red(),
     )
 
-    embed.set_footer(text=f'Starts at {match.startTime.strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
+    embed.set_footer(text=f'Starts at {match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
 
     if team_a.name in instance.referential["teams"]:
         embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
