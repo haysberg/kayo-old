@@ -11,6 +11,7 @@ import discord
 import dotenv
 import requests
 from sqlalchemy import create_engine
+from sqlalchemy import delete
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -36,13 +37,16 @@ class BotContext:
             self.engine = (create_engine("sqlite:///:memory:"))
         Session = sessionmaker(bind=self.engine)
 
+        intents = discord.Intents.all()
+
         global session
         self.session = Session()
         Base.metadata.create_all(self.engine)
 
         # Initializing core objects
-        self.bot = discord.Bot()
+        self.bot = discord.Bot(intents=intents)
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
+        self.unsubscribe = self.bot.create_group("unsubscribe", "Deleting alerts for leagues and teams")
 
         # Logging
         self.logger = logging.getLogger('discord')
@@ -377,3 +381,18 @@ def refresh_data():
     instance.session.commit()
 
     instance.logger.info("Refreshing events...")
+
+
+def delete_alert(channel_id, league=None, team=None):
+    """Deletes an alert based on the parameters given.
+
+    Args:
+        channel_id (Integer): Channel ID the command has been issued in
+        league (League, optional): The League you would like to delete from alerts. Defaults to None.
+        team_name (str, optional): The Team's name.
+    """
+    if league is not None:
+        instance.session.execute(delete(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id))
+    if team is not None:
+        instance.session.execute(delete(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name))
+    instance.session.commit()
