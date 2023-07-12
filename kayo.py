@@ -5,6 +5,7 @@ import os
 import sys
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 
 import discord
 import dotenv
@@ -175,7 +176,7 @@ def fetch_events_and_teams():
         match_dict = i["match"]
         match = Match(
             id=match_dict["id"],
-            startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ"),
+            startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
             bo_count=i["match"]["strategy"]["count"],
             league_slug=i["league"]["slug"],
             blockName=i["blockName"],
@@ -208,7 +209,8 @@ def get_upcoming_matches():
     """
     try:
         in_5_mins = datetime.now() + timedelta(minutes=5)
-        return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime).where(Match.startTime < datetime.now())).all()]
+        instance.logger.info(f'Checking for new matches in between {datetime.now()} and {in_5_mins}')
+        return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime, Match.startTime > datetime.now())).all()]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting matches from the database: {e}')
 
@@ -339,6 +341,8 @@ async def embed_alert(team_a, team_b, league, match):
         description=f'{league.name} · {match.blockName} · BO{match.bo_count}',
         color=discord.Colour.red(),
     )
+
+    embed.set_footer(text=f'Starts at {match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
 
     if team_a.name in instance.referential["teams"]:
         embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
