@@ -37,14 +37,12 @@ class BotContext:
             self.engine = (create_engine("sqlite:///:memory:"))
         Session = sessionmaker(bind=self.engine)
 
-        intents = discord.Intents.all()
-
         global session
         self.session = Session()
         Base.metadata.create_all(self.engine)
 
         # Initializing core objects
-        self.bot = discord.Bot(intents=intents)
+        self.bot = discord.Bot()
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
         self.unsubscribe = self.bot.create_group("unsubscribe", "Deleting alerts for leagues and teams")
 
