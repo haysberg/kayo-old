@@ -264,11 +264,14 @@ def create_league_alert(league_name, channel_id):
         league = instance.session.execute(
             select(League.id).where(League.name == league_name)
         ).one()
-        league_id = league.id
-        alert = Alert(channel_id=channel_id, league_id=league_id)
-        instance.session.add(alert)
-        instance.session.commit()
-        instance.logger.info('Successfully created an alert !')
+        if instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first() is not None:
+            alert = instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first()
+            return alert[0]
+        else:
+            alert = Alert(channel_id=channel_id, league_id=league.id)
+            instance.session.add(alert)
+            instance.session.commit()
+            instance.logger.info('Successfully created an alert !')
         return alert
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while creating alert: {str(e)}')
