@@ -172,7 +172,7 @@ def get_alerts_by_channel_id(channel_id):
         channel_id (int): Identifier for the channel.
     """
     try:
-        return [x[0] for x in instance.session.execute(select(Alert)).where(Alert.channel_id == channel_id).all()]
+        return [x[0] for x in instance.session.execute(select(Alert).where(Alert.channel_id == channel_id)).all()]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting an alert from the database: {e}')
 
@@ -210,7 +210,7 @@ def fetch_events_and_teams():
                 team_b=team_b.name
             )
             instance.session.merge(match)
-        instance.session.commit()
+    instance.session.commit()
     return data
 
 
