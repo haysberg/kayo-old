@@ -37,14 +37,12 @@ class BotContext:
             self.engine = (create_engine("sqlite:///:memory:"))
         Session = sessionmaker(bind=self.engine)
 
-        intents = discord.Intents.all()
-
         global session
         self.session = Session()
         Base.metadata.create_all(self.engine)
 
         # Initializing core objects
-        self.bot = discord.Bot(intents=intents)
+        self.bot = discord.Bot()
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
         self.unsubscribe = self.bot.create_group("unsubscribe", "Deleting alerts for leagues and teams")
 
@@ -159,37 +157,32 @@ def fetch_events_and_teams():
     """
     url = "https://esports-api.service.valorantesports.com/persisted/val/getSchedule?hl=en-US&sport=val&leagueId="
     for league in get_leagues():
-        url = url + f'{league.id},'
-    url = url[:-1]
-    payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
-    response = requests.get(url, headers=payload)
+        payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
+        response = requests.get(f'{url}{league.id}', headers=payload)
+        data = response.json()["data"]
+        # Going through all the teams in the upcoming events
+        for i in data["schedule"]["events"]:
+            # Creating both teams and flushing them to the DB
+            team_a_dict = i["match"]["teams"][0]
+            team_a = Team(**{k: team_a_dict[k] for k in dir(League) if k in team_a_dict})
+            instance.session.merge(team_a)
 
-    data = response.json()["data"]
+            team_b_dict = i["match"]["teams"][1]
+            team_b = Team(**{k: team_b_dict[k] for k in dir(League) if k in team_b_dict})
+            instance.session.merge(team_b)
 
-    # Going through all the teams in the upcoming events
-    for i in data["schedule"]["events"]:
-        # Creating both teams and flushing them to the DB
-        team_a_dict = i["match"]["teams"][0]
-        team_a = Team(**{k: team_a_dict[k] for k in dir(League) if k in team_a_dict})
-        instance.session.merge(team_a)
-
-        team_b_dict = i["match"]["teams"][1]
-        team_b = Team(**{k: team_b_dict[k] for k in dir(League) if k in team_b_dict})
-        instance.session.merge(team_b)
-
-        match_dict = i["match"]
-        match = Match(
-            id=match_dict["id"],
-            startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
-            bo_count=i["match"]["strategy"]["count"],
-            league_slug=i["league"]["slug"],
-            blockName=i["blockName"],
-            team_a=team_a.name,
-            team_b=team_b.name
-        )
-        instance.session.merge(match)
-    instance.session.commit()
-
+            match_dict = i["match"]
+            match = Match(
+                id=match_dict["id"],
+                startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
+                bo_count=i["match"]["strategy"]["count"],
+                league_slug=i["league"]["slug"],
+                blockName=i["blockName"],
+                team_a=team_a.name,
+                team_b=team_b.name
+            )
+            instance.session.merge(match)
+        instance.session.commit()
     return data
 
 
@@ -271,11 +264,14 @@ def create_league_alert(league_name, channel_id):
         league = instance.session.execute(
             select(League.id).where(League.name == league_name)
         ).one()
-        league_id = league.id
-        alert = Alert(channel_id=channel_id, league_id=league_id)
-        instance.session.add(alert)
-        instance.session.commit()
-        instance.logger.info('Successfully created an alert !')
+        if instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first() is not None:
+            alert = instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first()
+            return alert[0]
+        else:
+            alert = Alert(channel_id=channel_id, league_id=league.id)
+            instance.session.add(alert)
+            instance.session.commit()
+            instance.logger.info('Successfully created an alert !')
         return alert
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while creating alert: {str(e)}')
