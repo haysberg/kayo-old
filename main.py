@@ -88,7 +88,7 @@ async def list_alerts(ctx):
     Args:
         ctx (discord.ApplicationContext): Information about the current message.
     """
-    list_of_alerts = get_alerts_by_channel_id()
+    list_of_alerts = get_alerts_by_channel_id(ctx.channel_id)
     if not list_of_alerts:
         await ctx.respond("There is no alerts configured for this channel.")
     else:
