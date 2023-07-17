@@ -15,11 +15,12 @@ from kayo import create_team_alert
 from kayo import delete_alert
 from kayo import fetch_events_and_teams
 from kayo import fetch_leagues
+from kayo import get_alerts_by_channel_id
 from kayo import get_alerts_league
 from kayo import get_alerts_teams
+from kayo import get_league_by_id
 from kayo import get_league_names
 from kayo import get_leagues
-from kayo import get_matches
 from kayo import get_team_names
 from kayo import get_teams
 from kayo import get_upcoming_matches
@@ -44,7 +45,7 @@ async def on_disconnect():
     logging.error(f"{instance.bot.user} is disconnected ! 💣")
 
 
-@instance.bot.command(description="Prints out a help message")
+@instance.bot.slash_command(name="help", description="Prints out a help message")
 async def help(ctx):
     """Displays help.
 
@@ -53,6 +54,7 @@ async def help(ctx):
     """
     await ctx.respond("""Hello ! My name is KAY/O and my mission is to send messages when pro matches are about to start. Here is a list of my commands :
 
+    `/list_alerts` will list all the alerts currently configured in the channel.
     `/subscribe all_leagues` will give you alerts for every single matches happening.
     `/subscribe league [name]` will give you alerts for a specific league (for example, VCT EMEA)
     `/subscribe team [name]` will give you alerts for a specific team (for example, FNATIC)
@@ -65,10 +67,10 @@ async def help(ctx):
     Except the `ping` command, you need 'Manage Messages' permission to add / remove alerts in a public server.
     You can still DM me if you want the alerts in your DMs though !
 
-    By the way, my code is open source, so check out my code if you want. Link is in my profile description.""")
+    By the way, I'm open source, so check out my code if you want. Link is in my profile description.""")
 
 
-@instance.bot.command(description="Sends the bot's latency.")
+@instance.bot.slash_command(name="ping", description="Sends the bot's latency.")
 async def ping(ctx):
     """Simple ping command.
 
@@ -77,6 +79,28 @@ async def ping(ctx):
     """
     latency_ms = round(instance.bot.latency * 1000)
     await ctx.respond(f"Pong! `{latency_ms}` ms")
+
+
+@instance.bot.slash_command(name="list_alerts", description="Lists the alerts on this channel")
+async def list_alerts(ctx):
+    """Lists the alerts configured for the current channel.
+
+    Args:
+        ctx (discord.ApplicationContext): Information about the current message.
+    """
+    list_of_alerts = get_alerts_by_channel_id()
+    if not list_of_alerts:
+        await ctx.respond("There is no alerts configured for this channel.")
+    else:
+        answer = ""
+        for alert in list_of_alerts:
+            if alert.is_team_alert():
+                answer = answer + f"Team : {alert.team_name}\r"
+        for alert in list_of_alerts:
+            if not alert.is_team_alert():
+                league = get_league_by_id(alert.league_id)
+                answer = answer + f"League : {league.name}\r"
+        await ctx.respond(f'List of alerts : \r{answer}')
 
 
 @instance.subscribe.command(name="league", description="Subscribe to league alerts")
@@ -229,7 +253,7 @@ async def updateDatabase():
 
 
 if os.getenv("LOGLEVEL") == "DEBUG":
-    @instance.bot.command(description="debug command")
+    @instance.bot.slash_command(name="debug_alert", description="debug command")
     @commands.has_permissions(manage_roles=True, ban_members=True)
     async def debug_alert(ctx):
         """Sends a buttload of alerts for debugging the format.
@@ -237,9 +261,14 @@ if os.getenv("LOGLEVEL") == "DEBUG":
         Args:
             ctx (discord.ApplicationContext): Information about the current message.
         """
-        for match in get_matches():
-            await send_match_alert(ctx.channel_id, match)
-        await ctx.respond("Sending alerts your way...")
+        try:
+            list_str = str(get_team_names())
+            max_response_size = 2000
+            split_str = [list_str[i:i + max_response_size] for i in range(0, len(list_str), max_response_size)]
+            for msg in split_str:
+                await ctx.respond(msg)
+        except discord.ext.commands.errors.MissingPermissions as e:
+            instance.logger.error(str(e))
 
     @instance.subscribe.command(name="all_teams", description="Subscribe to team alerts")
     @commands.has_permissions(manage_roles=True, ban_members=True)
@@ -251,11 +280,24 @@ if os.getenv("LOGLEVEL") == "DEBUG":
         """
         instance.logger.info('Creating alert...')
         try:
+            await ctx.respond("Subscribing you to all teams...")
             for team in get_teams():
                 create_team_alert(team.name, ctx.channel_id)
             await ctx.respond("Subscribed to all the different teams !")
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 
+    @instance.bot.slash_command(name="dump_teams", description="Dump team names")
+    @commands.has_permissions(manage_roles=True, ban_members=True)
+    async def dump_teams(ctx: discord.ApplicationContext):
+        """Susbcribe the channel to all the different leagues.
+
+        Args:
+            ctx (discord.ApplicationContext): Information about the current message.
+        """
+        try:
+            await ctx.respond(get_team_names())
+        except discord.ext.commands.errors.MissingPermissions as e:
+            instance.logger.error(str(e))
 
 instance.bot.run(os.getenv("DISCORD_TOKEN"))

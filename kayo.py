@@ -31,6 +31,17 @@ class BotContext:
 
     def __init__(self):
         """Creates all the objects."""
+        # Logging
+        logging.basicConfig(filename='./db/kayo.log', encoding='utf-8', level=LOGLEVEL)
+        self.logger = logging.getLogger('discord')
+        self.logger.setLevel(level=LOGLEVEL)
+        self.logger = logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
+
+        self.logger = logging.getLogger()
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
+        self.logger.addHandler(handler)
+
         if os.getenv("DEPLOYED") == "production":
             self.engine = (create_engine("sqlite:///db/kayo.db"))
         else:
@@ -45,16 +56,6 @@ class BotContext:
         self.bot = discord.Bot()
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
         self.unsubscribe = self.bot.create_group("unsubscribe", "Deleting alerts for leagues and teams")
-
-        # Logging
-        self.logger = logging.getLogger('discord')
-        self.logger.setLevel(level=LOGLEVEL)
-        self.logger = logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
-
-        self.logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
-        self.logger.addHandler(handler)
 
         # Opening JSON file
         with open('referential.json') as json_file:
@@ -133,6 +134,21 @@ def get_league_by_slug(league_slug):
         instance.logger.error(f'Error while getting a league from the database: {e}')
 
 
+def get_league_by_id(league_id):
+    """Returns a League object based on its slug.
+
+    Args:
+        league_slug (str): The league's slug.
+
+    Returns:
+        League: A single League object.
+    """
+    try:
+        return instance.session.execute(select(League).where(League.id == league_id)).one()[0]
+    except SQLAlchemyError as e:
+        instance.logger.error(f'Error while getting a league from the database: {e}')
+
+
 def get_alerts(ctx: discord.AutocompleteContext = None):
     """Gets all the alerts from the database.
 
@@ -145,6 +161,18 @@ def get_alerts(ctx: discord.AutocompleteContext = None):
     """
     try:
         return [x[0] for x in instance.session.execute(select(Alert)).all()]
+    except SQLAlchemyError as e:
+        instance.logger.error(f'Error while getting an alert from the database: {e}')
+
+
+def get_alerts_by_channel_id(channel_id):
+    """Get all the alerts for a specific channel.
+
+    Args:
+        channel_id (int): Identifier for the channel.
+    """
+    try:
+        return [x[0] for x in instance.session.execute(select(Alert)).where(Alert.channel_id == channel_id).all()]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting an alert from the database: {e}')
 
@@ -288,14 +316,20 @@ def create_team_alert(team_name, channel_id):
     Returns:
         Alert: The Alert object created.
     """
-    team = instance.session.execute(
-        select(Team.name).where(Team.name == team_name)
-    ).one()
-    team_name = team.name
-    alert = Alert(channel_id=channel_id, team_name=team_name)
-    instance.session.add(alert)
-    instance.session.commit()
-    return alert
+    instance.logger.info(f'Creating an alert for team : {team_name} in channel id: {channel_id}')
+    try:
+        team = instance.session.execute(select(Team.name).where(Team.name == team_name)).one()
+        if (a := instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name)).first()) is not None:
+            return a[0]
+        else:
+            alert = Alert(channel_id=channel_id, team_name=team.name)
+            instance.session.add(alert)
+            instance.session.commit()
+            instance.logger.info('Successfully created an alert !')
+        return alert
+    except SQLAlchemyError as e:
+        instance.logger.error(f'Error while creating alert: {str(e)}')
+        raise discord.ext.commands.errors.CommandError
 
 
 def get_alerts_teams(team_a, team_b):
@@ -308,7 +342,7 @@ def get_alerts_teams(team_a, team_b):
     Returns:
         List[Alert]: List of alerts
     """
-    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_a or Alert.team_name == team_b)).all()]
+    return [x[0] for x in instance.session.execute(select(Alert).where((Alert.team_name == team_a) | (Alert.team_name == team_b))).all()]
 
 
 def get_alerts_league(league_slug):
