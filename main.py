@@ -88,19 +88,31 @@ async def list_alerts(ctx):
     Args:
         ctx (discord.ApplicationContext): Information about the current message.
     """
+    await ctx.respond("Fetching alerts...")
     list_of_alerts = get_alerts_by_channel_id(ctx.channel_id)
+    league_alerts = [x for x in list_of_alerts if x.league_id is not None]
+    team_alerts = [x for x in list_of_alerts if x.team_name is not None]
     if not list_of_alerts:
         await ctx.respond("There is no alerts configured for this channel.")
     else:
-        answer = ""
-        for alert in list_of_alerts:
-            if alert.is_team_alert():
-                answer = answer + f"Team : {alert.team_name}\r"
-        for alert in list_of_alerts:
-            if not alert.is_team_alert():
+        if team_alerts:
+            answer = "List of team alerts : "
+            for alert in team_alerts:
+                if len(f"{answer}\r- {alert.team_name}") > 1500:
+                    await ctx.respond(answer)
+                    answer = ""
+                answer = f"{answer}\r- {alert.team_name}"
+            await ctx.respond(answer)
+
+        if league_alerts:
+            answer = "List of league alerts :"
+            for alert in league_alerts:
                 league = get_league_by_id(alert.league_id)
-                answer = answer + f"League : {league.name}\r"
-        await ctx.respond(f'List of alerts : \r{answer}')
+                if len(f"{answer} \r - {league.name}") > 1500:
+                    await ctx.respond({answer})
+                    answer = ""
+                answer = f"{answer}\r- {league.name}"
+            await ctx.respond(answer)
 
 
 @instance.subscribe.command(name="league", description="Subscribe to league alerts")
