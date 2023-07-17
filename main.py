@@ -10,13 +10,15 @@ import discord
 from discord.ext import commands
 from discord.ext import tasks
 
-from kayo import create_league_alert, get_alerts_by_channel_id, get_league_by_id
+from kayo import create_league_alert
 from kayo import create_team_alert
 from kayo import delete_alert
 from kayo import fetch_events_and_teams
 from kayo import fetch_leagues
+from kayo import get_alerts_by_channel_id
 from kayo import get_alerts_league
 from kayo import get_alerts_teams
+from kayo import get_league_by_id
 from kayo import get_league_names
 from kayo import get_leagues
 from kayo import get_team_names
@@ -77,6 +79,7 @@ async def ping(ctx):
     """
     latency_ms = round(instance.bot.latency * 1000)
     await ctx.respond(f"Pong! `{latency_ms}` ms")
+
 
 @instance.bot.slash_command(name="list_alerts", description="Lists the alerts on this channel")
 async def list_alerts(ctx):
@@ -261,7 +264,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
         try:
             list_str = str(get_team_names())
             max_response_size = 2000
-            split_str = [list_str[i:i+max_response_size] for i in range(0, len(list_str), max_response_size)]
+            split_str = [list_str[i:i + max_response_size] for i in range(0, len(list_str), max_response_size)]
             for msg in split_str:
                 await ctx.respond(msg)
         except discord.ext.commands.errors.MissingPermissions as e:
@@ -286,7 +289,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
 
     @instance.bot.slash_command(name="dump_teams", description="Dump team names")
     @commands.has_permissions(manage_roles=True, ban_members=True)
-    async def subscribe_all_teams(ctx: discord.ApplicationContext):
+    async def dump_teams(ctx: discord.ApplicationContext):
         """Susbcribe the channel to all the different leagues.
 
         Args:

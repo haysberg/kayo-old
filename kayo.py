@@ -56,7 +56,7 @@ class BotContext:
         self.bot = discord.Bot()
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
         self.unsubscribe = self.bot.create_group("unsubscribe", "Deleting alerts for leagues and teams")
-        
+
         # Opening JSON file
         with open('referential.json') as json_file:
             self.referential = json.load(json_file)
@@ -166,10 +166,10 @@ def get_alerts(ctx: discord.AutocompleteContext = None):
 
 
 def get_alerts_by_channel_id(channel_id):
-    """_summary_
+    """Get all the alerts for a specific channel.
 
     Args:
-        channel_id (_type_): _description_
+        channel_id (int): Identifier for the channel.
     """
     try:
         return [x[0] for x in instance.session.execute(select(Alert)).where(Alert.channel_id == channel_id).all()]
