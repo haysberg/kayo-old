@@ -10,6 +10,8 @@ repos:
     -   id: check-shebang-scripts-are-executable
     -   id: check-symlinks
     -   id: check-yaml
+    -   id: check-json
+    -   id: requirements-txt-fixer
     -   id: debug-statements
         exclude: tests/
     -   id: destroyed-symlinks

@@ -1,12 +1,12 @@
-# Connecting to remote services
-SQLAlchemy==2.0.19
+flake8==6.0.0
+
+# Enforcing a healthy code
+pre-commit==3.3.3
 py-cord==2.4.1
 py-cord[speed]
 
 # Dotenv & API calls
 python-dotenv==1.0.0
 requests==2.31.0
-
-# Enforcing a healthy code
-pre-commit==3.3.3
-flake8==6.0.0
+# Connecting to remote services
+SQLAlchemy==2.0.19
