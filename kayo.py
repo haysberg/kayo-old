@@ -378,11 +378,11 @@ async def embed_alert(team_a, team_b, league, match):
 
     embed.set_footer(text=f'Starts at {match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
 
-    if team_a.name in instance.referential["teams"]:
+    if team_a.name in instance.referential["teams"] and instance.referential["teams"][team_a.name] != "":
         embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
-    if league.name in instance.referential["leagues"]:
+    if league.name in instance.referential["leagues"] and instance.referential["teams"][league.name] != "":
         embed.add_field(name="Official stream", value=f'[Link]({instance.referential["leagues"][league.name]})', inline=True)
-    if team_b.name in instance.referential["teams"]:
+    if team_b.name in instance.referential["teams"] and instance.referential["teams"][team_b.name] != "":
         embed.add_field(name=f'{team_b.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_b.name]})', inline=True)
     embed.set_thumbnail(url=f'{league.image}')
 
