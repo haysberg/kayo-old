@@ -1,5 +1,5 @@
 # Connecting to remote services
-SQLAlchemy==2.0.17
+SQLAlchemy==2.0.19
 py-cord==2.4.1
 py-cord[speed]
 
