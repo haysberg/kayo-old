@@ -26,10 +26,18 @@ jobs:
     needs: pre-commit
     permissions:
       contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
