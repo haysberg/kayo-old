@@ -393,7 +393,7 @@ async def embed_alert(team_a, team_b, league, match):
 
     if team_a.name in instance.referential["teams"] and instance.referential["teams"][team_a.name] != "":
         embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
-    if league.name in instance.referential["leagues"] and instance.referential["teams"][league.name] != "":
+    if league.name in instance.referential["leagues"] and instance.referential["leagues"][league.name] != "":
         embed.add_field(name="Official stream", value=f'[Link]({instance.referential["leagues"][league.name]})', inline=True)
     if team_b.name in instance.referential["teams"] and instance.referential["teams"][team_b.name] != "":
         embed.add_field(name=f'{team_b.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_b.name]})', inline=True)
