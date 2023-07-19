@@ -1,3 +1,4 @@
+asyncio==3.4.3
 flake8==6.0.0
 
 # Enforcing a healthy code
@@ -8,5 +9,6 @@ py-cord[speed]
 # Dotenv & API calls
 python-dotenv==1.0.0
 requests==2.31.0
+
 # Connecting to remote services
 SQLAlchemy==2.0.19

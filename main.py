@@ -3,6 +3,7 @@
 Returns:
     _type_: _description_
 """
+import asyncio
 import logging
 import os
 
@@ -250,11 +251,12 @@ async def checkForMatches():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
-        instance.logger.info(f'Found match ! {match.team_a} VS {match.team_b}, starting at {match.startTime}')
-        for alert in get_alerts_teams(match.team_a, match.team_b):
-            await send_match_alert(alert.channel_id, match)
-        for alert in get_alerts_league(match.league_slug):
-            await send_match_alert(alert.channel_id, match)
+        async with asyncio.TaskGroup() as tg:
+            for alert in get_alerts_teams(match.team_a, match.team_b):
+                tg.create_task(send_match_alert(alert.channel_id, match))
+            for alert in get_alerts_league(match.league_slug):
+                tg.create_task(send_match_alert(alert.channel_id, match))
+    instance.logger.info('Finished updating Matches and Teams !')
 
 
 @tasks.loop(seconds=1800)
@@ -262,7 +264,7 @@ async def updateDatabase():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Updating the database periodically...")
     fetch_leagues()
-    fetch_events_and_teams()
+    await fetch_events_and_teams()
 
 
 if os.getenv("LOGLEVEL") == "DEBUG":

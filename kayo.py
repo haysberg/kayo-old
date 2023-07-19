@@ -1,4 +1,5 @@
 """_summary_."""
+import asyncio
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 
+import aiohttp
 import discord
 import dotenv
 import requests
@@ -41,6 +43,8 @@ class BotContext:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
         self.logger.addHandler(handler)
+
+        self.http_client = aiohttp.ClientSession()
 
         if os.getenv("DEPLOYED") == "production":
             self.engine = (create_engine("sqlite:///db/kayo.db"))
@@ -177,40 +181,66 @@ def get_alerts_by_channel_id(channel_id):
         instance.logger.error(f'Error while getting an alert from the database: {e}')
 
 
-def fetch_events_and_teams():
+async def fetch_events_and_teams():
     """Downloads events and teams from the Riot API. Then inserts it in the database.
 
     Returns:
         dict: the response of the API as a JSON
     """
-    url = "https://esports-api.service.valorantesports.com/persisted/val/getSchedule?hl=en-US&sport=val&leagueId="
-    for league in get_leagues():
-        payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
-        response = requests.get(f'{url}{league.id}', headers=payload)
-        data = response.json()["data"]
-        # Going through all the teams in the upcoming events
-        for i in data["schedule"]["events"]:
-            # Creating both teams and flushing them to the DB
-            team_a_dict = i["match"]["teams"][0]
-            team_a = Team(**{k: team_a_dict[k] for k in dir(League) if k in team_a_dict})
-            instance.session.merge(team_a)
+    list_of_teams = []
+    list_of_matches = []
+    async with asyncio.TaskGroup() as tg:
+        for league in get_leagues():
+            tg.create_task(fetch_teams_from_league(league, list_of_teams, list_of_matches))
 
-            team_b_dict = i["match"]["teams"][1]
-            team_b = Team(**{k: team_b_dict[k] for k in dir(League) if k in team_b_dict})
-            instance.session.merge(team_b)
-
-            match_dict = i["match"]
-            match = Match(
-                id=match_dict["id"],
-                startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
-                bo_count=i["match"]["strategy"]["count"],
-                league_slug=i["league"]["slug"],
-                blockName=i["blockName"],
-                team_a=team_a.name,
-                team_b=team_b.name
-            )
-            instance.session.merge(match)
+    # instance.session.add_all(list_of_teams).on_conflict_do_update(
+    #     index_elements=[list_of_teams.name], set_=dict(x[0] for x in list_of_teams if x. )
+    # )
+    for team in list_of_teams:
+        instance.session.merge(team)
+    for match in list_of_matches:
+        instance.session.merge(match)
     instance.session.commit()
+    instance.logger.info('Finished updating Matches and Teams !')
+
+
+async def fetch_teams_from_league(league: League, list_of_teams, list_of_matches):
+    """Gets all the teams from a specific league.
+
+    Args:
+        league_id (League): The League to extract teams from.
+    """
+    url = "https://esports-api.service.valorantesports.com/persisted/val/getSchedule?hl=en-US&sport=val&leagueId="
+    headers = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
+    try:
+        async with instance.http_client.get(f'{url}{league.id}', headers=headers) as response:
+            data = await response.json()
+            data = data["data"]
+            print(data)
+            # Going through all the teams in the upcoming events
+            for i in data["schedule"]["events"]:
+                # Creating both teams and flushing them to the DB
+                team_a_dict = i["match"]["teams"][0]
+                team_a = Team(**{k: team_a_dict[k] for k in dir(League) if k in team_a_dict})
+                list_of_teams.append(team_a)
+
+                team_b_dict = i["match"]["teams"][1]
+                team_b = Team(**{k: team_b_dict[k] for k in dir(League) if k in team_b_dict})
+                list_of_teams.append(team_b)
+
+                match_dict = i["match"]
+                match = Match(
+                    id=match_dict["id"],
+                    startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
+                    bo_count=i["match"]["strategy"]["count"],
+                    league_slug=i["league"]["slug"],
+                    blockName=i["blockName"],
+                    team_a=team_a.name,
+                    team_b=team_b.name
+                )
+                list_of_matches.append(match)
+    except KeyError as e:
+        instance.logger.error(f'Error while parsing Riot API data : {e}. Riots API responded with the following response code : {response.status} and data {response.json()}')
     return data
 
 
@@ -332,7 +362,7 @@ def create_team_alert(team_name, channel_id):
         raise discord.ext.commands.errors.CommandError
 
 
-def get_alerts_teams(team_a, team_b):
+async def get_alerts_teams(team_a, team_b):
     """Retrieves Alert objects from the database based on the Team the Alert follows.
 
     Args:
