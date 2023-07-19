@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Docker test
+name: Docker build & push
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref
+            type=ref,event=branch
             type=sha
 
       - name: Build Docker image
