@@ -45,7 +45,7 @@ class BotContext:
         if os.getenv("DEPLOYED") == "production":
             self.engine = (create_engine("sqlite:///db/kayo.db"))
         else:
-            self.engine = (create_engine("sqlite:///:memory:"))
+            self.engine = (create_engine("sqlite:///:memory:", echo=True))
         Session = sessionmaker(bind=self.engine)
 
         global session
@@ -343,6 +343,19 @@ def get_alerts_teams(team_a, team_b):
         List[Alert]: List of alerts
     """
     return [x[0] for x in instance.session.execute(select(Alert).where((Alert.team_name == team_a) | (Alert.team_name == team_b))).all()]
+
+
+def get_alerts_team(team_name):
+    """Retrieves Alert objects from the database based on the Team the Alert follows.
+
+    Args:
+        team_a (str): One of the Team's names facing each other.
+        team_b (str): One of the Team's names facing each other.
+
+    Returns:
+        List[Alert]: List of alerts
+    """
+    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_name)).all()]
 
 
 def get_alerts_league(league_slug):
