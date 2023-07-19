@@ -17,7 +17,6 @@ from kayo import fetch_events_and_teams
 from kayo import fetch_leagues
 from kayo import get_alerts_by_channel_id
 from kayo import get_alerts_league
-from kayo import get_alerts_team
 from kayo import get_alerts_teams
 from kayo import get_league_by_id
 from kayo import get_league_names
@@ -252,9 +251,7 @@ async def checkForMatches():
     instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
         instance.logger.info(f'Found match ! {match.team_a} VS {match.team_b}, starting at {match.startTime}')
-        for alert in get_alerts_team(match.team_a):
-            await send_match_alert(alert.channel_id, match)
-        for alert in get_alerts_team(match.team_b):
+        for alert in get_alerts_teams(match.team_a, match.team_b):
             await send_match_alert(alert.channel_id, match)
         for alert in get_alerts_league(match.league_slug):
             await send_match_alert(alert.channel_id, match)
