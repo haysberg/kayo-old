@@ -250,6 +250,7 @@ async def checkForMatches():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
+        instance.logger.info(f'Found match ! {match.team_a} VS {match.team_b}, starting at {match.startTime}')
         for alert in get_alerts_teams(match.team_a, match.team_b):
             await send_match_alert(alert.channel_id, match)
         for alert in get_alerts_league(match.league_slug):
@@ -274,11 +275,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            list_str = str(get_team_names())
-            max_response_size = 2000
-            split_str = [list_str[i:i + max_response_size] for i in range(0, len(list_str), max_response_size)]
-            for msg in split_str:
-                await ctx.respond(msg)
+            await ctx.respond(get_alerts_teams("team_a_dbg", "team_b_dbg"))
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 
