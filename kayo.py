@@ -15,6 +15,7 @@ import requests
 from sqlalchemy import create_engine
 from sqlalchemy import delete
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -70,6 +71,78 @@ global instance
 instance = BotContext()
 
 
+def upsert_teams(
+    teams: list[Team]
+):
+    """Upserts team objects.
+
+    Args:
+        teams (list[Team]): Teams to upsert
+    """
+    # https://www.sqlite.org/limits.html#max_variable_number
+    for i in range(0, len(teams), 100):
+        stmt = insert(Team).values(
+            [
+                {
+                    "name": team.name,
+                    "image": team.image
+                }
+                for team in teams[
+                    i: i + 100
+                    if i + 100 < len(teams)
+                    else len(teams)
+                ]
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["name"],
+            set_={"image": stmt.excluded.image},
+        )
+        instance.session.execute(stmt)
+    instance.session.commit()
+
+
+def upsert_matches(matches: list[Match]):
+    """Upserts matches.
+
+    Args:
+        matches (list[Match]): Matches to upsert.
+    """
+    # https://www.sqlite.org/limits.html#max_variable_number
+    for i in range(0, len(matches), 100):
+        stmt = insert(Match).values(
+            [
+                {
+                    "id": match.id,
+                    "league_id": match.league_id,
+                    "startTime": match.startTime,
+                    "bo_count": match.bo_count,
+                    "blockName": match.blockName,
+                    "team_a": match.team_a.name,
+                    "team_b": match.team_b.name,
+                }
+                for match in matches[
+                    i: i + 100
+                    if i + 100 < len(matches)
+                    else len(matches)
+                ]
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "league_id": stmt.excluded.league_id,
+                "startTime": stmt.excluded.startTime,
+                "bo_count": stmt.excluded.bo_count,
+                "blockName": stmt.excluded.blockName,
+                "team_a": stmt.excluded.team_a.name,
+                "team_b": stmt.excluded.team_b.name,
+            },
+        )
+        instance.session.execute(stmt)
+    instance.session.commit()
+
+
 def fetch_leagues():
     """Downloads all the leagues and inserts them in the database."""
     # The league endpoint
@@ -79,10 +152,8 @@ def fetch_leagues():
         payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
         response = requests.get(url, headers=payload)
         data = response.json()["data"]["leagues"]
-        all_leagues = []
         for league_dict in data:
             league = League(**{k: league_dict[k] for k in dir(League) if k in league_dict})
-            all_leagues.append(league)
             instance.session.merge(league)
         instance.session.commit()
     except requests.RequestException as e:
@@ -134,6 +205,21 @@ def get_league_by_slug(league_slug):
     """
     try:
         return instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+    except SQLAlchemyError as e:
+        instance.logger.error(f'Error while getting a league from the database: {e}')
+
+
+def get_league_by_name(league_name):
+    """Returns a League object based on its slug.
+
+    Args:
+        league_slug (str): The league's slug.
+
+    Returns:
+        League: A single League object.
+    """
+    try:
+        return instance.session.execute(select(League).where(League.name == league_name)).one()[0]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting a league from the database: {e}')
 
@@ -193,14 +279,8 @@ async def fetch_events_and_teams():
         for league in get_leagues():
             tg.create_task(fetch_teams_from_league(league, list_of_teams, list_of_matches))
 
-    # instance.session.add_all(list_of_teams).on_conflict_do_update(
-    #     index_elements=[list_of_teams.name], set_=dict(x[0] for x in list_of_teams if x. )
-    # )
-    for team in list_of_teams:
-        instance.session.merge(team)
-    for match in list_of_matches:
-        instance.session.merge(match)
-    instance.session.commit()
+    upsert_teams(list_of_teams)
+    upsert_matches(list_of_matches)
     instance.logger.info('Finished updating Matches and Teams !')
 
 
@@ -231,16 +311,16 @@ async def fetch_teams_from_league(league: League, list_of_teams, list_of_matches
                 match_dict = i["match"]
                 match = Match(
                     id=match_dict["id"],
+                    league_id=league.id,
                     startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
                     bo_count=i["match"]["strategy"]["count"],
-                    league_slug=i["league"]["slug"],
                     blockName=i["blockName"],
-                    team_a=team_a.name,
-                    team_b=team_b.name
+                    team_a=team_a,
+                    team_b=team_b
                 )
                 list_of_matches.append(match)
     except KeyError as e:
-        instance.logger.error(f'Error while parsing Riot API data : {e}. Riots API responded with the following response code : {response.status} and data {response.json()}')
+        instance.logger.error(f'Error while parsing Riot API data : {e}. Riots API responded with the following response code : {response.status} and data {await response.json()}')
     return data
 
 
@@ -307,7 +387,7 @@ def get_league_names(ctx: discord.AutocompleteContext = None):
     return [league.name for league in get_leagues()]
 
 
-def create_league_alert(league_name, channel_id):
+def create_league_alert(league, channel_id):
     """Creates an Alert to get notifications for a specific League.
 
     Args:
@@ -317,16 +397,14 @@ def create_league_alert(league_name, channel_id):
     Returns:
         Alert: The Alert object created.
     """
-    instance.logger.info(f'Creating an alert for league name: {league_name} in channel id: {channel_id}')
+    instance.logger.info(f'Creating an alert for league: {league} in channel id: {channel_id}')
     try:
-        league = instance.session.execute(
-            select(League.id).where(League.name == league_name)
-        ).one()
-        if instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first() is not None:
-            alert = instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first()
-            return alert[0]
+        if (a := instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first()) is not None:
+            instance.logger.info(f'Alert for league {league} already exists, sending the existing Alert object.')
+            return a[0]
         else:
-            alert = Alert(channel_id=channel_id, league_id=league.id)
+            alert = Alert(channel_id=channel_id, league_id=league.id, team_name=None)
+            league.alerts.append(alert)
             instance.session.add(alert)
             instance.session.commit()
             instance.logger.info('Successfully created an alert !')
@@ -336,23 +414,24 @@ def create_league_alert(league_name, channel_id):
         raise discord.ext.commands.errors.CommandError
 
 
-def create_team_alert(team_name, channel_id):
+def create_team_alert(team, channel_id):
     """Creates an Alert to get notifications for a specific Team.
 
     Args:
-        team_name (str): The Team's name.
+        team (str): The Team object
         channel_id (int): Integer representing a single Discord channel.
 
     Returns:
         Alert: The Alert object created.
     """
-    instance.logger.info(f'Creating an alert for team : {team_name} in channel id: {channel_id}')
+    instance.logger.info(f'Creating an alert for team : {team} in channel id: {channel_id}')
     try:
-        team = instance.session.execute(select(Team.name).where(Team.name == team_name)).one()
         if (a := instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name)).first()) is not None:
+            instance.logger.info(f'Alert for team {team} already exists, sending the existing Alert object.')
             return a[0]
         else:
-            alert = Alert(channel_id=channel_id, team_name=team.name)
+            alert = Alert(channel_id=channel_id, team_name=team.name, league_id=None)
+            team.alerts.append(alert)
             instance.session.add(alert)
             instance.session.commit()
             instance.logger.info('Successfully created an alert !')
@@ -401,7 +480,7 @@ def get_alerts_league(league_slug):
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
 
 
-async def embed_alert(team_a, team_b, league, match):
+async def embed_alert(match):
     """Creates a discord.Embed object to be sent by send_match_alert().
 
     Args:
@@ -414,21 +493,23 @@ async def embed_alert(team_a, team_b, league, match):
         discord.Embed: The discord.Embed object representing the alert
     """
     embed = discord.Embed(
-        title=f'{team_a.name} ⚔️ {team_b.name}',
-        description=f'{league.name} · {match.blockName} · BO{match.bo_count}',
+        title=f'{match.team_a} ⚔️ {match.team_b}',
+        description=f'{match.league.name} · {match.blockName} · BO{match.bo_count}',
         color=discord.Colour.red(),
     )
 
     embed.set_footer(text=f'Starts at {match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
 
-    if team_a.name in instance.referential["teams"] and instance.referential["teams"][team_a.name] != "":
-        embed.add_field(name=f'{team_a.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_a.name]})', inline=True)
-    if league.name in instance.referential["leagues"] and instance.referential["leagues"][league.name] != "":
-        embed.add_field(name="Official stream", value=f'[Link]({instance.referential["leagues"][league.name]})', inline=True)
-    if team_b.name in instance.referential["teams"] and instance.referential["teams"][team_b.name] != "":
-        embed.add_field(name=f'{team_b.name}\'s stream', value=f'[Link]({instance.referential["teams"][team_b.name]})', inline=True)
-    embed.set_thumbnail(url=f'{league.image}')
+    if match.team_a in instance.referential["teams"] and instance.referential["teams"][match.team_a] != "":
+        embed.add_field(name=f'{match.team_a}\'s stream', value=f'[Link]({instance.referential["teams"][match.team_a]})', inline=True)
 
+    if match.league.name in instance.referential["leagues"] and instance.referential["leagues"][match.league.name] != "":
+        embed.add_field(name="Official stream", value=f'[Link]({instance.referential["leagues"][match.league.name]})', inline=True)
+
+    if match.team_b in instance.referential["teams"] and instance.referential["teams"][match.team_b] != "":
+        embed.add_field(name=f'{match.team_b}\'s stream', value=f'[Link]({instance.referential["teams"][match.team_b]})', inline=True)
+
+    embed.set_thumbnail(url=f'{match.league.image}')
     return embed
 
 
@@ -440,10 +521,7 @@ async def send_match_alert(channel_id, match):
         match (Match): Match object for which we wish to send an Alert.
     """
     channel = instance.bot.get_channel(channel_id)
-    team_a = get_team_by_name(match.team_a)
-    team_b = get_team_by_name(match.team_b)
-    league = get_league_by_slug(match.league_slug),
-    await channel.send(embed=await embed_alert(team_a, team_b, league[0], match))
+    await channel.send(embed=await embed_alert(match))
 
 
 def refresh_data():

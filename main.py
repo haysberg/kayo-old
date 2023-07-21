@@ -20,8 +20,11 @@ from kayo import get_alerts_by_channel_id
 from kayo import get_alerts_league
 from kayo import get_alerts_teams
 from kayo import get_league_by_id
+from kayo import get_league_by_name
 from kayo import get_league_names
 from kayo import get_leagues
+from kayo import get_matches
+from kayo import get_team_by_name
 from kayo import get_team_names
 from kayo import get_teams
 from kayo import get_upcoming_matches
@@ -133,7 +136,7 @@ async def subscribe_league(
         Defaults to discord.utils.basic_autocomplete(get_league_names)).
     """
     try:
-        alert = create_league_alert(league, ctx.channel_id)
+        alert = create_league_alert(get_league_by_name(league), ctx.channel_id)
         instance.logger.info(f"Created alert {str(alert)}")
         await ctx.respond(f"Successfully created an alert for {league} !")
     except discord.ext.commands.errors.MissingPermissions:
@@ -157,7 +160,7 @@ async def subscribe_team(
         Defaults to discord.utils.basic_autocomplete(get_league_names) ).
     """
     try:
-        alert = create_team_alert(team, ctx.channel_id)
+        alert = create_team_alert(get_team_by_name(team), ctx.channel_id)
         instance.logger.info(f"Created alert {str(alert)}")
         await ctx.respond(f"Successfully created an alert for {team} !")
     except discord.ext.commands.errors.MissingPermissions:
@@ -223,7 +226,7 @@ async def subscribe_all_leagues(ctx: discord.ApplicationContext):
     instance.logger.info('Creating alert...')
     try:
         for league in get_leagues():
-            create_league_alert(league.name, ctx.channel_id)
+            create_league_alert(league, ctx.channel_id)
         await ctx.respond("Subscribed to all the different leagues !")
     except discord.ext.commands.errors.MissingPermissions as e:
         instance.logger.error(str(e))
@@ -252,9 +255,9 @@ async def checkForMatches():
     instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
         async with asyncio.TaskGroup() as tg:
-            for alert in get_alerts_teams(match.team_a, match.team_b):
+            for alert in await get_alerts_teams(match.team_a, match.team_b):
                 tg.create_task(send_match_alert(alert.channel_id, match))
-            for alert in get_alerts_league(match.league_slug):
+            for alert in await get_alerts_league(match.league_slug):
                 tg.create_task(send_match_alert(alert.channel_id, match))
     instance.logger.info('Finished updating Matches and Teams !')
 
@@ -277,7 +280,10 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            await ctx.respond(get_alerts_teams("team_a_dbg", "team_b_dbg"))
+            async with asyncio.TaskGroup() as tg:
+                for match in get_matches()[:10]:
+                    tg.create_task((send_match_alert(ctx.channel_id, match)))
+            instance.logger.debug('Done sending debug alerts !')
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 
@@ -293,7 +299,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
         try:
             await ctx.respond("Subscribing you to all teams...")
             for team in get_teams():
-                create_team_alert(team.name, ctx.channel_id)
+                create_team_alert(team, ctx.channel_id)
             await ctx.respond("Subscribed to all the different teams !")
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
