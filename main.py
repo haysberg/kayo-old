@@ -252,8 +252,8 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
 async def checkForMatches():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Checking for alerts to send...")
-    for match in get_upcoming_matches():
-        async with asyncio.TaskGroup() as tg:
+    async with asyncio.TaskGroup() as tg:
+        for match in get_upcoming_matches():
             team_alerts = get_alerts_teams(match.team_a, match.team_b)
             league_alerts = get_alerts_league(match.league)
             for alert in team_alerts:
