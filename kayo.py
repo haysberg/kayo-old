@@ -343,9 +343,12 @@ def get_upcoming_matches():
         List[Matches]: All the matches happening in the next 5 minutes.
     """
     try:
-        in_5_mins = datetime.now() + timedelta(minutes=5)
-        instance.logger.info(f'Checking for new matches in between {datetime.now()} and {in_5_mins}')
-        return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime, Match.startTime > datetime.now())).all()]
+        if os.getenv('DEPLOYED') == 'production':
+            in_5_mins = datetime.now() + timedelta(minutes=5)
+            instance.logger.info(f'Checking for new matches in between {datetime.now()} and {in_5_mins}')
+            return [x[0] for x in instance.session.execute(select(Match).where(in_5_mins > Match.startTime, Match.startTime > datetime.now())).all()]
+        else:
+            return [x[0] for x in instance.session.execute(select(Match).where(Match.startTime > datetime.now())).all()][0:5]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting matches from the database: {e}')
 
@@ -441,7 +444,7 @@ def create_team_alert(team, channel_id):
         raise discord.ext.commands.errors.CommandError
 
 
-async def get_alerts_teams(team_a, team_b):
+def get_alerts_teams(team_a, team_b):
     """Retrieves Alert objects from the database based on the Team the Alert follows.
 
     Args:
@@ -467,16 +470,16 @@ def get_alerts_team(team_name):
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_name)).all()]
 
 
-def get_alerts_league(league_slug):
+def get_alerts_league(league):
     """Retrieves Alert objects from the database based on the League the Alert follows.
 
     Args:
-        league_slug (str): League.slug of the League object
+        league (League): League of the League object
 
     Returns:
         List[Alert]: List of alerts
     """
-    league = instance.session.execute(select(League).where(League.slug == league_slug)).one()[0]
+    instance.logger.info(f'Getting alerts for league {league}')
     return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
 
 

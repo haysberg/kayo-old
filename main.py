@@ -23,7 +23,6 @@ from kayo import get_league_by_id
 from kayo import get_league_by_name
 from kayo import get_league_names
 from kayo import get_leagues
-from kayo import get_matches
 from kayo import get_team_by_name
 from kayo import get_team_names
 from kayo import get_teams
@@ -255,9 +254,11 @@ async def checkForMatches():
     instance.logger.info("Checking for alerts to send...")
     for match in get_upcoming_matches():
         async with asyncio.TaskGroup() as tg:
-            for alert in await get_alerts_teams(match.team_a, match.team_b):
+            team_alerts = get_alerts_teams(match.team_a, match.team_b)
+            league_alerts = get_alerts_league(match.league)
+            for alert in team_alerts:
                 tg.create_task(send_match_alert(alert.channel_id, match))
-            for alert in await get_alerts_league(match.league_slug):
+            for alert in league_alerts:
                 tg.create_task(send_match_alert(alert.channel_id, match))
     instance.logger.info('Finished updating Matches and Teams !')
 
@@ -280,9 +281,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            async with asyncio.TaskGroup() as tg:
-                for match in get_matches()[:10]:
-                    tg.create_task((send_match_alert(ctx.channel_id, match)))
+            await checkForMatches()
             instance.logger.debug('Done sending debug alerts !')
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
