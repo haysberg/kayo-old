@@ -118,8 +118,8 @@ def upsert_matches(matches: list[Match]):
                     "startTime": match.startTime,
                     "bo_count": match.bo_count,
                     "blockName": match.blockName,
-                    "team_a": match.team_a.name,
-                    "team_b": match.team_b.name,
+                    "team_a": match.team_a,
+                    "team_b": match.team_b,
                 }
                 for match in matches[
                     i: i + 100
@@ -135,8 +135,8 @@ def upsert_matches(matches: list[Match]):
                 "startTime": stmt.excluded.startTime,
                 "bo_count": stmt.excluded.bo_count,
                 "blockName": stmt.excluded.blockName,
-                "team_a": stmt.excluded.team_a.name,
-                "team_b": stmt.excluded.team_b.name,
+                "team_a": stmt.excluded.team_a,
+                "team_b": stmt.excluded.team_b,
             },
         )
         instance.session.execute(stmt)
@@ -315,12 +315,14 @@ async def fetch_teams_from_league(league: League, list_of_teams, list_of_matches
                     startTime=datetime.strptime(i["startTime"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz=None),
                     bo_count=i["match"]["strategy"]["count"],
                     blockName=i["blockName"],
-                    team_a=team_a,
-                    team_b=team_b
+                    team_a=team_a.name,
+                    team_b=team_b.name
                 )
                 list_of_matches.append(match)
     except KeyError as e:
         instance.logger.error(f'Error while parsing Riot API data : {e}. Riots API responded with the following response code : {response.status} and data {await response.json()}')
+    except AttributeError as e:
+        instance.logger.error(f'Problem with parsing team : {e}')
     return data
 
 
