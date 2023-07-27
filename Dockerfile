@@ -4,7 +4,7 @@ WORKDIR /app
 
 ENV DEPLOYED=production
 
-ADD *.py requirements.txt referential.json /app/
+ADD *.py requirements.txt referential.json /kayo /app/
 
 RUN pip install -r /app/requirements.txt && mkdir /app/db
 

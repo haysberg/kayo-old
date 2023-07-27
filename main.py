@@ -11,24 +11,13 @@ import discord
 from discord.ext import commands
 from discord.ext import tasks
 
-from kayo import create_league_alert
-from kayo import create_team_alert
-from kayo import delete_alert
-from kayo import fetch_events_and_teams
-from kayo import fetch_leagues
-from kayo import get_alerts_by_channel_id
-from kayo import get_alerts_league
-from kayo import get_alerts_teams
-from kayo import get_league_by_id
-from kayo import get_league_by_name
-from kayo import get_league_names
-from kayo import get_leagues
-from kayo import get_team_by_name
-from kayo import get_team_names
-from kayo import get_teams
-from kayo import get_upcoming_matches
 from kayo import instance
-from kayo import send_match_alert
+from kayo.alert import get_alerts_by_channel_id, create_league_alert, delete_alert, get_alerts_teams, get_alerts_league
+from kayo.league import get_league_by_id, get_league_by_name, get_leagues, fetch_leagues, get_league_names
+from kayo.lib import send_match_alert, fetch_events_and_teams
+from kayo.match import get_upcoming_matches
+from kayo.team import create_team_alert, get_team_by_name, get_teams, get_team_names
+
 
 # BOT LOGIC
 
@@ -217,7 +206,7 @@ async def unsubscribe_team(
 @instance.subscribe.command(name="all_leagues", description="Subscribe to league alerts")
 @commands.has_permissions(manage_messages=True)
 async def subscribe_all_leagues(ctx: discord.ApplicationContext):
-    """Susbcribe the channel to all the different leagues.
+    """Subscribe the channel to all the different leagues.
 
     Args:
         ctx (discord.ApplicationContext): Information about the current message.
@@ -248,7 +237,7 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
         raise error  # Here we raise other errors to ensure they aren't ignored
 
 
-@tasks.loop(seconds=300)
+@tasks.loop(seconds=60)
 async def checkForMatches():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Checking for alerts to send...")
@@ -263,7 +252,7 @@ async def checkForMatches():
     instance.logger.info('Finished updating Matches and Teams !')
 
 
-@tasks.loop(seconds=1800)
+@tasks.loop(hours=24)
 async def updateDatabase():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Updating the database periodically...")
@@ -275,7 +264,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
     @instance.bot.slash_command(name="debug_alert", description="debug command")
     @commands.has_permissions(manage_roles=True, ban_members=True)
     async def debug_alert(ctx):
-        """Sends a buttload of alerts for debugging the format.
+        """Sends a shit ton of alerts for debugging the format.
 
         Args:
             ctx (discord.ApplicationContext): Information about the current message.
@@ -289,7 +278,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
     @instance.subscribe.command(name="all_teams", description="Subscribe to team alerts")
     @commands.has_permissions(manage_roles=True, ban_members=True)
     async def subscribe_all_teams(ctx: discord.ApplicationContext):
-        """Susbcribe the channel to all the different leagues.
+        """Subscribe the channel to all the different leagues.
 
         Args:
             ctx (discord.ApplicationContext): Information about the current message.
@@ -306,7 +295,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
     @instance.bot.slash_command(name="dump_teams", description="Dump team names")
     @commands.has_permissions(manage_roles=True, ban_members=True)
     async def dump_teams(ctx: discord.ApplicationContext):
-        """Susbcribe the channel to all the different leagues.
+        """Subscribe the channel to all the different leagues.
 
         Args:
             ctx (discord.ApplicationContext): Information about the current message.
