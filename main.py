@@ -12,16 +12,15 @@ from discord.ext import commands
 from discord.ext import tasks
 
 from kayo import instance
-from kayo.alert import get_alerts_by_channel_id, create_league_alert, delete_alert, get_alerts_teams, get_alerts_league
+from kayo.alert import get_alerts_by_channel_id, create_league_alert, delete_alert, get_alerts_teams, get_alerts_league, \
+    create_team_alert
 from kayo.league import get_league_by_id, get_league_by_name, get_leagues, fetch_leagues, get_league_names
 from kayo.lib import send_match_alert, fetch_events_and_teams
 from kayo.match import get_upcoming_matches
-from kayo.team import create_team_alert, get_team_by_name, get_teams, get_team_names
+from kayo.team import get_team_by_name, get_teams, get_team_names
 
 
 # BOT LOGIC
-
-
 @instance.bot.event
 async def on_ready():
     """Executed when the Discord bot boots up."""

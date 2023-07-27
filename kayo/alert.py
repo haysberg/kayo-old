@@ -135,3 +135,30 @@ def get_alerts(ctx: discord.AutocompleteContext = None):
         return [x[0] for x in instance.session.execute(select(Alert)).all()]
     except SQLAlchemyError as e:
         instance.logger.error(f'Error while getting an alert from the database: {e}')
+
+
+def create_team_alert(team, channel_id):
+    """Creates an Alert to get notifications for a specific Team.
+
+    Args:
+        team (str): The Team object
+        channel_id (int): Integer representing a single Discord channel.
+
+    Returns:
+        Alert: The Alert object created.
+    """
+    instance.logger.info(f'Creating an alert for team : {team} in channel id: {channel_id}')
+    try:
+        if (a := instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name)).first()) is not None:
+            instance.logger.info(f'Alert for team {team} already exists, sending the existing Alert object : {a}')
+            return a[0]
+        else:
+            alert = Alert(channel_id=channel_id, team_name=team.name, league_id=None)
+            team.alerts.append(alert)
+            instance.session.add(alert)
+            instance.session.commit()
+            instance.logger.info('Successfully created an alert !')
+        return alert
+    except SQLAlchemyError as e:
+        instance.logger.error(f'Error while creating alert: {str(e)}')
+        raise discord.ext.commands.errors.CommandError
