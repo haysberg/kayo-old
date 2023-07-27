@@ -1,7 +1,9 @@
+"""KAY/O Initialization module."""
 import json
 import logging
 import os
 import sys
+
 import aiohttp
 import discord
 import dotenv
@@ -9,7 +11,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from kayo.model import Base
-
 
 dotenv.load_dotenv()
 LOGLEVEL = os.environ.get('LOGLEVEL').upper()

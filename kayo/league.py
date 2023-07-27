@@ -1,14 +1,17 @@
+"""Contains the dataclass and all useful function to interact with Leagues."""
 import os
 
 import discord
 import requests
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from kayo.model import Base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
+
 import kayo
-
-
-from sqlalchemy import String, select
+from kayo.model import Base
 
 
 class League(Base):

@@ -1,13 +1,16 @@
+"""Contains the dataclass for Teams and useful functions."""
 import discord
-from sqlalchemy import String, select
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
 
 import kayo
-from kayo.model import Base
 from kayo import instance
-
+from kayo.model import Base
 
 
 class Team(Base):
@@ -24,6 +27,7 @@ class Team(Base):
     alerts: Mapped[list["kayo.alert.Alert"]] = relationship(
         default_factory=list, back_populates="teams"
     )
+
 
 def upsert_teams(
     teams: list[Team]

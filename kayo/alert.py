@@ -1,10 +1,21 @@
-import discord
-from sqlalchemy import ForeignKey, UniqueConstraint, select, delete
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+"""Contains the dataclass and functions for Alerts.
 
-from kayo.model import Base
+Raises:
+    discord.ext.commands.errors.CommandError: If an error occurs, we can catch it
+"""
+import discord
+from sqlalchemy import delete
+from sqlalchemy import ForeignKey
+from sqlalchemy import select
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
+
+import kayo
 from kayo.league import League
+from kayo.model import Base
 from kayo.team import Team
 
 
@@ -35,7 +46,6 @@ class Alert(Base):
         """
         return self.team_name is not None
 
-from kayo import instance
 
 def create_league_alert(league, channel_id):
     """Creates an Alert to get notifications for a specific League.
@@ -47,20 +57,20 @@ def create_league_alert(league, channel_id):
     Returns:
         Alert: The Alert object created.
     """
-    instance.logger.info(f'Creating an alert for league: {league} in channel id: {channel_id}')
+    kayo.instance.logger.info(f'Creating an alert for league: {league} in channel id: {channel_id}')
     try:
-        if (a := instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first()) is not None:
-            instance.logger.info(f'Alert for league {league} already exists, sending the existing Alert object : {a}')
+        if (a := kayo.instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id)).first()) is not None:
+            kayo.instance.logger.info(f'Alert for league {league} already exists, sending the existing Alert object : {a}')
             return a[0]
         else:
             alert = Alert(channel_id=channel_id, league_id=league.id, team_name=None)
             league.alerts.append(alert)
-            instance.session.add(alert)
-            instance.session.commit()
-            instance.logger.info('Successfully created an alert : {alert} !')
+            kayo.instance.session.add(alert)
+            kayo.instance.session.commit()
+            kayo.instance.logger.info('Successfully created an alert : {alert} !')
         return alert
     except SQLAlchemyError as e:
-        instance.logger.error(f'Error while creating alert: {str(e)}')
+        kayo.instance.logger.error(f'Error while creating alert: {str(e)}')
         raise discord.ext.commands.errors.CommandError
 
 
@@ -74,11 +84,19 @@ def get_alerts_teams(team_a, team_b):
     Returns:
         List[Alert]: List of alerts
     """
-    return [x[0] for x in instance.session.execute(select(Alert).where((Alert.team_name == team_a) | (Alert.team_name == team_b))).all()]
+    return [x[0] for x in kayo.instance.session.execute(select(Alert).where((Alert.team_name == team_a) | (Alert.team_name == team_b))).all()]
 
 
 def get_alerts_team(team_name):
-    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.team_name == team_name)).all()]
+    """Get all the Alerts for a specific team.
+
+    Args:
+        team_name (str): name of the Team to retrieve alerts from.
+
+    Returns:
+        List[Alert]: List of all the Alerts.
+    """
+    return [x[0] for x in kayo.instance.session.execute(select(Alert).where(Alert.team_name == team_name)).all()]
 
 
 def get_alerts_league(league):
@@ -90,8 +108,8 @@ def get_alerts_league(league):
     Returns:
         List[Alert]: List of alerts
     """
-    instance.logger.info(f'Getting alerts for league {league}')
-    return [x[0] for x in instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
+    kayo.instance.logger.info(f'Getting alerts for league {league}')
+    return [x[0] for x in kayo.instance.session.execute(select(Alert).where(Alert.league_id == league.id)).all()]
 
 
 def delete_alert(channel_id, league=None, team=None):
@@ -103,10 +121,10 @@ def delete_alert(channel_id, league=None, team=None):
         team_name (str, optional): The Team's name.
     """
     if league is not None:
-        instance.session.execute(delete(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id))
+        kayo.instance.session.execute(delete(Alert).where(Alert.channel_id == channel_id, Alert.league_id == league.id))
     if team is not None:
-        instance.session.execute(delete(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name))
-    instance.session.commit()
+        kayo.instance.session.execute(delete(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name))
+    kayo.instance.session.commit()
 
 
 def get_alerts_by_channel_id(channel_id):
@@ -116,9 +134,9 @@ def get_alerts_by_channel_id(channel_id):
         channel_id (int): Identifier for the channel.
     """
     try:
-        return [x[0] for x in instance.session.execute(select(Alert).where(Alert.channel_id == channel_id)).all()]
+        return [x[0] for x in kayo.instance.session.execute(select(Alert).where(Alert.channel_id == channel_id)).all()]
     except SQLAlchemyError as e:
-        instance.logger.error(f'Error while getting an alert from the database: {e}')
+        kayo.instance.logger.error(f'Error while getting an alert from the database: {e}')
 
 
 def get_alerts(ctx: discord.AutocompleteContext = None):
@@ -132,9 +150,9 @@ def get_alerts(ctx: discord.AutocompleteContext = None):
         List[Alert]: All the alerts in the database.
     """
     try:
-        return [x[0] for x in instance.session.execute(select(Alert)).all()]
+        return [x[0] for x in kayo.instance.session.execute(select(Alert)).all()]
     except SQLAlchemyError as e:
-        instance.logger.error(f'Error while getting an alert from the database: {e}')
+        kayo.instance.logger.error(f'Error while getting an alert from the database: {e}')
 
 
 def create_team_alert(team, channel_id):
@@ -147,18 +165,18 @@ def create_team_alert(team, channel_id):
     Returns:
         Alert: The Alert object created.
     """
-    instance.logger.info(f'Creating an alert for team : {team} in channel id: {channel_id}')
+    kayo.instance.logger.info(f'Creating an alert for team : {team} in channel id: {channel_id}')
     try:
-        if (a := instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name)).first()) is not None:
-            instance.logger.info(f'Alert for team {team} already exists, sending the existing Alert object : {a}')
+        if (a := kayo.instance.session.execute(select(Alert).where(Alert.channel_id == channel_id, Alert.team_name == team.name)).first()) is not None:
+            kayo.instance.logger.info(f'Alert for team {team} already exists, sending the existing Alert object : {a}')
             return a[0]
         else:
             alert = Alert(channel_id=channel_id, team_name=team.name, league_id=None)
             team.alerts.append(alert)
-            instance.session.add(alert)
-            instance.session.commit()
-            instance.logger.info('Successfully created an alert !')
+            kayo.instance.session.add(alert)
+            kayo.instance.session.commit()
+            kayo.instance.logger.info('Successfully created an alert !')
         return alert
     except SQLAlchemyError as e:
-        instance.logger.error(f'Error while creating alert: {str(e)}')
+        kayo.instance.logger.error(f'Error while creating alert: {str(e)}')
         raise discord.ext.commands.errors.CommandError

@@ -1,15 +1,22 @@
+"""Contains the Match dataclass and functions to interact with it."""
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from typing import Optional
 
-from sqlalchemy import ForeignKey, DateTime, String, select
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from kayo.league import League
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
 
-from kayo.model import Base
 from kayo import instance
+from kayo.league import League
+from kayo.model import Base
 
 
 class Match(Base):
@@ -30,6 +37,7 @@ class Match(Base):
     team_b: Mapped[str] = mapped_column(ForeignKey("teams.name"))
 
     league: Mapped[League] = relationship(default=None)
+
 
 def upsert_matches(matches: list[Match]):
     """Upserts matches.
