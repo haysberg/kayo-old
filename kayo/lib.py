@@ -3,6 +3,7 @@ import asyncio
 import os
 from datetime import datetime
 from datetime import timezone
+import time 
 
 import discord
 
@@ -88,11 +89,11 @@ async def embed_alert(match):
     """
     embed = discord.Embed(
         title=f'{match.team_a} ⚔️ {match.team_b}',
-        description=f'{match.league.name} · {match.blockName} · BO{match.bo_count}',
+        description=f'{match.league.name} · {match.blockName} · BO{match.bo_count}\nStarts at <t:{int(time.mktime(match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).timetuple()))}:f>',
         color=discord.Colour.red(),
     )
 
-    embed.set_footer(text=f'Starts at {match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).strftime("%-I:%M")} · UTC · {match.startTime.strftime("%A %-d")}')
+    # embed.add_field(name='Start time', value=f'Starts at <t:{int(time.mktime(match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).timetuple()))}:f>')
 
     if match.team_a in instance.referential["teams"] and instance.referential["teams"][match.team_a] != "":
         embed.add_field(name=f'{match.team_a}\'s stream', value=f'[Link]({instance.referential["teams"][match.team_a]})', inline=True)
