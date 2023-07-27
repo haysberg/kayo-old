@@ -252,7 +252,7 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
         raise error  # Here we raise other errors to ensure they aren't ignored
 
 
-@tasks.loop(seconds=60)
+@tasks.loop(seconds=300)
 async def checkForMatches():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Checking for alerts to send...")
