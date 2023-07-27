@@ -18,7 +18,7 @@ class League(Base):
     """An object used to represent a League.
 
     Args:
-        Base: Base class.
+        kayo.model.Base: Base class.
     """
 
     __tablename__ = "leagues"
@@ -63,9 +63,9 @@ def get_league_by_id(league_id):
         League: A single League object.
     """
     try:
-        return kayo.kayo.instance.session.execute(select(League).where(League.id == league_id)).one()[0]
+        return kayo.instance.session.execute(select(League).where(League.id == league_id)).one()[0]
     except SQLAlchemyError as e:
-        kayo.kayo.instance.logger.error(f'Error while getting a league from the database: {e}')
+        kayo.instance.logger.error(f'Error while getting a league from the database: {e}')
 
 
 def get_league_by_name(league_name):

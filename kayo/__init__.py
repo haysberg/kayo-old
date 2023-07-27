@@ -10,8 +10,6 @@ import dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from kayo.model import Base
-
 dotenv.load_dotenv()
 LOGLEVEL = os.environ.get('LOGLEVEL').upper()
 
@@ -42,7 +40,6 @@ class BotContext:
 
         global session
         self.session = Session()
-        Base.metadata.create_all(self.engine)
 
         # Initializing core objects
         self.bot = discord.Bot()

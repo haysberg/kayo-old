@@ -25,10 +25,15 @@ from kayo.league import get_league_names
 from kayo.league import get_leagues
 from kayo.lib import fetch_events_and_teams
 from kayo.lib import send_match_alert
+from kayo.match import get_matches
 from kayo.match import get_upcoming_matches
+from kayo.model import Base
 from kayo.team import get_team_by_name
 from kayo.team import get_team_names
 from kayo.team import get_teams
+
+
+Base.metadata.create_all(instance.engine)
 
 
 # BOT LOGIC
@@ -280,7 +285,8 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            await checkForMatches()
+            for match in sorted([x for x in get_matches() if x.team_a != "TBD" and x.team_b != "TBD"], key=lambda x: x.startTime, reverse=True)[0:10]:
+                await send_match_alert(ctx.channel_id, match)
             instance.logger.debug('Done sending debug alerts !')
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))

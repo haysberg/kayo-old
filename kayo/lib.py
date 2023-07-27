@@ -1,9 +1,9 @@
 """_summary_."""
 import asyncio
 import os
+import time
 from datetime import datetime
 from datetime import timezone
-import time 
 
 import discord
 
@@ -89,7 +89,7 @@ async def embed_alert(match):
     """
     embed = discord.Embed(
         title=f'{match.team_a} ⚔️ {match.team_b}',
-        description=f'{match.league.name} · {match.blockName} · BO{match.bo_count}\nStarts at <t:{int(time.mktime(match.startTime.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(tz=timezone.utc).timetuple()))}:f>',
+        description=f'{match.league.name} · {match.blockName} · BO{match.bo_count}\nStarts at <t:{int(time.mktime(match.startTime.timetuple()))}:f>',
         color=discord.Colour.red(),
     )
 
