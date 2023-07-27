@@ -5,6 +5,7 @@ import discord
 import requests
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -115,6 +116,43 @@ def get_leagues(ctx: discord.AutocompleteContext = None):
         kayo.instance.logger.error(f'Error while getting leagues from the database: {e}')
 
 
+def upsert_leagues(leagues: list[League]):
+    """Upserts leagues.
+
+    Args:
+        leagues (list[League]): Leagues to upsert.
+    """
+    # https://www.sqlite.org/limits.html#max_variable_number
+    for i in range(0, len(leagues), 100):
+        stmt = insert(League).values(
+            [
+                {
+                    "id": league.id,
+                    "name": league.name,
+                    "slug": league.slug,
+                    "region": league.region,
+                    "image": league.image
+                }
+                for league in leagues[
+                    i: i + 100
+                    if i + 100 < len(leagues)
+                    else len(leagues)
+                ]
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "name": stmt.excluded.name,
+                "slug": stmt.excluded.slug,
+                "region": stmt.excluded.region,
+                "image": stmt.excluded.image
+            },
+        )
+        kayo.instance.session.execute(stmt)
+    kayo.instance.session.commit()
+
+
 def fetch_leagues():
     """Downloads all the leagues and inserts them in the database."""
     # The league endpoint
@@ -124,10 +162,11 @@ def fetch_leagues():
         payload = {"X-Api-Key": os.getenv("RIOT_API_KEY")}
         response = requests.get(url, headers=payload)
         data = response.json()["data"]["leagues"]
+        list_of_leagues = []
         for league_dict in data:
             league = League(**{k: league_dict[k] for k in dir(League) if k in league_dict})
-            kayo.instance.session.merge(league)
-        kayo.instance.session.commit()
+            list_of_leagues.append(league)
+        upsert_leagues(list_of_leagues)
     except requests.RequestException as e:
         kayo.instance.logger.error(f'Error while fetching the leagues: {e}')
     except SQLAlchemyError as e:
