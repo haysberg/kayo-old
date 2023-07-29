@@ -267,7 +267,7 @@ async def checkForMatches():
     instance.logger.info('Finished updating Matches and Teams !')
 
 
-@tasks.loop(hours=24)
+@tasks.loop(minutes=30)
 async def updateDatabase():
     """Checks if there is new upcoming matches."""
     instance.logger.info("Updating the database periodically...")

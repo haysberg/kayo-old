@@ -9,7 +9,6 @@ import discord
 
 import kayo
 from kayo import instance
-from kayo.league import fetch_leagues
 from kayo.league import get_leagues
 from kayo.league import League
 from kayo.match import Match
@@ -117,13 +116,3 @@ async def send_match_alert(channel_id, match):
     """
     channel = instance.bot.get_channel(channel_id)
     await channel.send(embed=await embed_alert(match))
-
-
-def refresh_data():
-    """Fetches the data again."""
-    instance.logger.info("Refreshing leagues...")
-    for league in fetch_leagues():
-        instance.session.merge(league)
-    instance.session.commit()
-
-    instance.logger.info("Refreshing events...")
