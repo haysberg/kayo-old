@@ -115,4 +115,5 @@ async def send_match_alert(channel_id, match):
         match (Match): Match object for which we wish to send an Alert.
     """
     channel = instance.bot.get_channel(channel_id)
-    await channel.send(embed=await embed_alert(match))
+    if channel is not None:
+        await channel.send(embed=await embed_alert(match))
