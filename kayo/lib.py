@@ -113,7 +113,10 @@ async def send_match_alert(channel_id, match):
         channel_id (int): Integer representing a single Discord channel.
         match (Match): Match object for which we wish to send an Alert.
     """
-    channel = instance.bot.get_channel(channel_id)
-    if channel is None:
-        raise discord.NotFound(f'Couldnt get the alert channel with id : {channel_id}')
-    await channel.send(embed=await embed_alert(match))
+    try:
+        channel = instance.bot.get_channel(channel_id)
+        if channel is None:
+            raise BaseException(f'Couldnt get the alert channel with id : {channel_id}')
+        await channel.send(embed=await embed_alert(match))
+    except:
+        pass

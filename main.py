@@ -280,18 +280,17 @@ async def updateDatabase():
     fetch_leagues()
     await fetch_events_and_teams()
 
-
-if os.getenv("LOGLEVEL") == "DEBUG":
-    @instance.bot.slash_command(name="debug_alert", description="debug command")
+if os.environ.get('DEPLOYED').upper() != "PRODUCTION":
+    @instance.bot.slash_command(name="debug_alert", description="DO NOT USE ON YOUR SERVER !")
     @commands.has_permissions(manage_roles=True, ban_members=True)
-    async def debug_alert(ctx):
+    async def debug_alerts(ctx):
         """Sends a shit ton of alerts for debugging the format.
 
         Args:
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            checkForMatches(prepared_matches=sorted([x for x in get_matches() if x.team_a != "TBD" and x.team_b != "TBD"], key=lambda x: x.startTime, reverse=True)[0:10])
+            await checkForMatches(prepared_matches=sorted(get_matches(), key=lambda x: x.startTime, reverse=True)[0:10])
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 
@@ -309,19 +308,6 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             for team in get_teams():
                 create_team_alert(team, ctx.channel_id)
             await ctx.respond("Subscribed to all the different teams !")
-        except discord.ext.commands.errors.MissingPermissions as e:
-            instance.logger.error(str(e))
-
-    @instance.bot.slash_command(name="dump_teams", description="Dump team names")
-    @commands.has_permissions(manage_roles=True, ban_members=True)
-    async def dump_teams(ctx: discord.ApplicationContext):
-        """Subscribe the channel to all the different leagues.
-
-        Args:
-            ctx (discord.ApplicationContext): Information about the current message.
-        """
-        try:
-            await ctx.respond(get_team_names())
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 

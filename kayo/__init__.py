@@ -29,7 +29,7 @@ class BotContext:
         self.logger.addHandler(handler)
 
         if LOGLEVEL == "DEBUG":
-            self.logger = logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
+            logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
 
         self.http_client = aiohttp.ClientSession()
 
@@ -43,7 +43,10 @@ class BotContext:
         self.session = Session()
 
         # Initializing core objects
-        self.bot = discord.Bot()
+        if os.environ.get('DEPLOYED').upper() == "PRODUCTION":
+            self.bot = discord.Bot()
+        else:
+            self.bot = discord.Bot(debug_guilds=[int(os.environ.get('DEBUG_GUILD'))])
         self.subscribe = self.bot.create_group("subscribe", "Subscribing to leagues and teams")
         self.unsubscribe = self.bot.create_group("unsubscribe", "Deleting alerts for leagues and teams")
 
