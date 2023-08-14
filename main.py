@@ -291,7 +291,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            checkForMatches(prepared_matches=sorted([x for x in get_matches() if x.team_a != "TBD" and x.team_b != "TBD"], key=lambda x: x.startTime, reverse=True)[0:10]) 
+            checkForMatches(prepared_matches=sorted([x for x in get_matches() if x.team_a != "TBD" and x.team_b != "TBD"], key=lambda x: x.startTime, reverse=True)[0:10])
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 
