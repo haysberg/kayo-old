@@ -118,5 +118,6 @@ async def send_match_alert(channel_id, match):
         if channel is None:
             raise BaseException(f'Couldnt get the alert channel with id : {channel_id}')
         await channel.send(embed=await embed_alert(match))
-    except:
+    except Exception as e:
+        instance.logger.exception(f'Got an exception sending an alert : {e}')
         pass
