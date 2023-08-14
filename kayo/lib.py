@@ -47,7 +47,6 @@ async def fetch_teams_from_league(league: League, list_of_teams, list_of_matches
         async with instance.http_client.get(f'{url}{league.id}', headers=headers) as response:
             data = await response.json()
             data = data["data"]
-            print(data)
             # Going through all the teams in the upcoming events
             for i in data["schedule"]["events"]:
                 # Creating both teams and flushing them to the DB
@@ -115,5 +114,6 @@ async def send_match_alert(channel_id, match):
         match (Match): Match object for which we wish to send an Alert.
     """
     channel = instance.bot.get_channel(channel_id)
-    if channel is not None:
-        await channel.send(embed=await embed_alert(match))
+    if channel is None:
+        raise discord.NotFound(f'Couldnt get the alert channel with id : {channel_id}')
+    await channel.send(embed=await embed_alert(match))

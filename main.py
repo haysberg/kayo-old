@@ -247,24 +247,30 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
         error: Just here to handle an exception-ception.
     """
     if isinstance(error, discord.ext.commands.errors.MissingPermissions):
-        await ctx.respond("You need to have the 'Manage Messages' permission to run this command in a server. Feel free to send me a DM !")
+        await ctx.respond("You need to have the 'Manage Messages' permission to run this command in a server.")
     else:
+        instance.logger.exception(error)
         raise error  # Here we raise other errors to ensure they aren't ignored
 
 
 @tasks.loop(seconds=300)
-async def checkForMatches():
+async def checkForMatches(prepared_matches=None):
     """Checks if there is new upcoming matches."""
     instance.logger.info("Checking for alerts to send...")
+    if prepared_matches is None:
+        prepared_matches = get_upcoming_matches()
     async with asyncio.TaskGroup() as tg:
-        for match in get_upcoming_matches():
-            team_alerts = get_alerts_teams(match.team_a, match.team_b)
-            league_alerts = get_alerts_league(match.league)
-            for alert in team_alerts:
-                tg.create_task(send_match_alert(alert.channel_id, match))
-            for alert in league_alerts:
-                tg.create_task(send_match_alert(alert.channel_id, match))
-    instance.logger.info('Finished updating Matches and Teams !')
+        for match in prepared_matches:
+            try:
+                team_alerts = get_alerts_teams(match.team_a, match.team_b)
+                league_alerts = get_alerts_league(match.league)
+                for alert in team_alerts:
+                    tg.create_task(send_match_alert(alert.channel_id, match))
+                for alert in league_alerts:
+                    tg.create_task(send_match_alert(alert.channel_id, match))
+            except* Exception as ex:
+                instance.logger.exception(f'Got an exception while handling alerts : {ex}')
+        instance.logger.info('Finished updating Matches and Teams !')
 
 
 @tasks.loop(minutes=30)
@@ -285,9 +291,7 @@ if os.getenv("LOGLEVEL") == "DEBUG":
             ctx (discord.ApplicationContext): Information about the current message.
         """
         try:
-            for match in sorted([x for x in get_matches() if x.team_a != "TBD" and x.team_b != "TBD"], key=lambda x: x.startTime, reverse=True)[0:10]:
-                await send_match_alert(ctx.channel_id, match)
-            instance.logger.debug('Done sending debug alerts !')
+            checkForMatches(prepared_matches=sorted([x for x in get_matches() if x.team_a != "TBD" and x.team_b != "TBD"], key=lambda x: x.startTime, reverse=True)[0:10]) 
         except discord.ext.commands.errors.MissingPermissions as e:
             instance.logger.error(str(e))
 

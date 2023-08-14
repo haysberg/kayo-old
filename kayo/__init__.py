@@ -19,16 +19,17 @@ class BotContext:
 
     def __init__(self):
         """Creates all the objects."""
-        # Logging
-        logging.basicConfig(filename='./db/kayo.log', encoding='utf-8', level=LOGLEVEL)
+        LOGFORMAT = '%(asctime)s:%(levelname)s:%(message)s'
+        logging.basicConfig(filename='./db/kayo.log', encoding='utf-8', level=LOGLEVEL, format=LOGFORMAT)
         self.logger = logging.getLogger('discord')
         self.logger.setLevel(level=LOGLEVEL)
-        self.logger = logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
 
-        self.logger = logging.getLogger()
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
         self.logger.addHandler(handler)
+
+        if LOGLEVEL == "DEBUG":
+            self.logger = logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
 
         self.http_client = aiohttp.ClientSession()
 
@@ -36,8 +37,8 @@ class BotContext:
             self.engine = (create_engine("sqlite:///db/kayo.db"))
         else:
             self.engine = (create_engine("sqlite:///:memory:", echo=True))
-        Session = sessionmaker(bind=self.engine)
 
+        Session = sessionmaker(bind=self.engine)
         global session
         self.session = Session()
 
