@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "kayo"
+version = "0.2.0"
+description = "KAY/O is a Discord bot that sends Valorant esport alerts."
+authors = ["haysberg"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+asyncio = "3.4.3"
+py-cord = { version = "2.4.1", extras = ["speed"] }
+python-dotenv = "1.0.0"
+SQLAlchemy = "2.0.22"
+peewee = "^3.17.0"
+requests = "^2.31.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

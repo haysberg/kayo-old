@@ -9,9 +9,10 @@ import discord
 import dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from peewee import *
 
 dotenv.load_dotenv()
-LOGLEVEL = os.environ.get('LOGLEVEL').upper()
+LOGLEVEL = os.environ.get('LOGLEVEL', 'info').upper()
 
 
 class BotContext:
@@ -27,23 +28,17 @@ class BotContext:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
         self.logger.addHandler(handler)
-
-        if LOGLEVEL == "DEBUG":
-            logging.getLogger("sqlalchemy.engine").setLevel(level=LOGLEVEL)
-
         self.http_client = aiohttp.ClientSession()
 
         if os.getenv("DEPLOYED") == "production":
-            self.engine = (create_engine("sqlite:///db/kayo.db"))
+            self.db = SqliteDatabase("sqlite:///db/kayo.db")
         else:
-            self.engine = (create_engine("sqlite:///:memory:", echo=True))
+            self.db = SqliteDatabase("sqlite:///:memory:")
 
-        Session = sessionmaker(bind=self.engine)
-        global session
-        self.session = Session()
+        global db
 
         # Initializing core objects
-        if os.environ.get('DEPLOYED').upper() == "PRODUCTION":
+        if os.environ.get('DEPLOYED', 'DEBUG').upper() == "PRODUCTION":
             self.bot = discord.Bot()
         else:
             self.bot = discord.Bot(debug_guilds=[int(os.environ.get('DEBUG_GUILD'))])

@@ -280,7 +280,7 @@ async def updateDatabase():
     fetch_leagues()
     await fetch_events_and_teams()
 
-if os.environ.get('DEPLOYED').upper() != "PRODUCTION":
+if os.environ.get('DEPLOYED', 'DEBUG').upper() != "PRODUCTION":
     @instance.bot.slash_command(name="debug_alert", description="DO NOT USE ON YOUR SERVER !")
     @commands.has_permissions(manage_roles=True, ban_members=True)
     async def debug_alerts(ctx):
