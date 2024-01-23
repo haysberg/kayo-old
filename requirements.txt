@@ -7,7 +7,7 @@ py-cord==2.4.1
 py-cord[speed]
 
 # Dotenv & API calls
-python-dotenv==1.0.0
+python-dotenv==1.0.1
 requests==2.31.0
 
 # Connecting to remote services
